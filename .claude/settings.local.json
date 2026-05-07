@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk 'NR>=1085 && NR<=1500' \"/c/Users/Hamid/Documents/opmind.github.io/index.html\")",
+      "PowerShell(npm *)",
+      "PowerShell(npx --yes create-next-app@latest . --typescript --tailwind --app --no-src-dir --no-import-alias --use-npm --eslint --turbopack --skip-install 2>&1 | Select-Object -Last 30)"
+    ]
+  }
+}

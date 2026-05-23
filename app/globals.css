@@ -1,26 +1,135 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-bg: #000000;
+  --color-bg-1: #0a0a0a;
+  --color-bg-2: #111111;
+  --color-bg-3: #181818;
+  --color-card: #141414;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+
+  --color-text: #ffffff;
+  --color-text-muted: #aaaaaa;
+  --color-text-dim: #666666;
+
+  /* Bordeaux palette */
+  --color-accent: #7a0000;
+  --color-accent-deep: #5a0000;
+  --color-accent-bright: #9a0000;
+  --color-accent-soft: rgba(122, 0, 0, 0.5);
+
+  --font-sans: var(--font-barlow), system-ui, sans-serif;
+  --font-display: var(--font-barlow-condensed), system-ui, sans-serif;
+  --font-mono: var(--font-rajdhani), system-ui, sans-serif;
+
+  --radius: 0px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 0 !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  background: #000;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #000;
+  color: #fff;
+  font-family: var(--font-barlow), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tactical grid — bordeaux subtle */
+.bg-tactical-grid {
+  background-image:
+    linear-gradient(rgba(122, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Bordeaux glow utilities */
+.accent-glow {
+  box-shadow: 0 0 32px rgba(122, 0, 0, 0.35);
+}
+.accent-glow-strong {
+  box-shadow:
+    0 0 0 1px rgba(122, 0, 0, 0.5),
+    0 0 40px rgba(122, 0, 0, 0.45),
+    0 0 100px rgba(122, 0, 0, 0.2);
+}
+
+::selection {
+  background: #7a0000;
+  color: #ffffff;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+
+/* Legal pages — restore native spacing the global reset wipes out (h3, ul, li, a). */
+.legal-prose h3 {
+  font-family: var(--font-rajdhani), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #ffffff;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.legal-prose strong {
+  font-weight: 600;
+  color: #ffffff;
+}
+.legal-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+.legal-prose ul > li {
+  margin-top: 0.5rem;
+}
+.legal-prose ul > li::marker {
+  color: #7a0000;
+}
+.legal-prose a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-color: #7a0000;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s ease;
+}
+.legal-prose a:hover {
+  text-decoration-color: #ffffff;
+}
+
+/* Zoom slider — force each wrapped <section> to exactly 100vh and clip overflow.
+   Original sections use `min-h-screen` + heavy `py-40/48`; we constrain them here. */
+.zoom-slide {
+  overflow: hidden;
+}
+.zoom-slide > section {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  padding-top: 7rem !important;
+  padding-bottom: 3rem !important;
+  overflow: hidden;
+}
+.zoom-slide > section > * {
+  width: 100%;
 }

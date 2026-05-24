@@ -1,0 +1,3688 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRÉATEUR DE STAGE — OpMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@300;400;500;600&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --surface: #131318;
+    --surface-2: #1c1c22;
+    --line: rgba(235, 229, 210, 0.08);
+    --line-2: rgba(235, 229, 210, 0.16);
+    --ink: #ebe5d2;
+    --dim: rgba(235, 229, 210, 0.55);
+    --dim-2: rgba(235, 229, 210, 0.32);
+    --red: #e84a3a;
+    --red-deep: #9d2618;
+    --green: #5ad99b;
+    --amber: #f5a623;
+    --display: "Antonio", "Bebas Neue", sans-serif;
+    --sans: "Geist", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    height: 100%;
+    overflow: hidden;
+  }
+  ::selection { background: var(--red); color: var(--ink); }
+
+  /* ───────────  TOPBAR  ─────────── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line-2);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 10;
+    gap: 16px;
+  }
+  .topbar .left, .topbar .right {
+    display: flex; align-items: center;
+    flex: 1;
+    gap: 18px;
+  }
+  .topbar .right { justify-content: flex-end; gap: 12px; }
+  .topbar .center {
+    flex: 2;
+    display: flex; justify-content: center;
+  }
+  .topbar .logo {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .topbar .logo span { color: var(--red); }
+  .topbar a.back {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color .15s;
+  }
+  .topbar a.back:hover { color: var(--ink); }
+  .topbar .stagename {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 6px 14px;
+    outline: none;
+    min-width: 260px;
+    transition: border-color .15s;
+  }
+  .topbar .stagename:hover { border-color: var(--line-2); }
+  .topbar .stagename:focus { border-color: var(--ink); }
+  .topbar .export {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .topbar .export:hover { background: var(--red-deep); }
+
+  .export-result {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .export-result.show { display: flex; }
+  .export-result .filename { color: var(--red); }
+  .export-result .sep { color: var(--dim-2); }
+  .export-result input {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 10px;
+    outline: none;
+    width: 180px;
+  }
+  .export-result input:focus { border-color: var(--ink); }
+  .export-result .send {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .export-result .send:hover { background: rgba(235,229,210,0.85); }
+  .export-result .done { color: var(--green); }
+
+  /* ───────────  LAYOUT  ─────────── */
+  .layout {
+    position: fixed;
+    top: 48px; left: 0; right: 0; bottom: 0;
+    display: flex;
+  }
+  .sidebar {
+    width: 240px;
+    background: #0d0d12;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar h3 {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .sidebar .separator {
+    height: 1px;
+    background: var(--line);
+    margin: 18px 0;
+  }
+
+  /* tools */
+  .tool {
+    display: block;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .tool:hover { background: rgba(255,255,255,0.04); }
+  .tool.active {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  .tool-help {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 4px 4px 8px;
+    line-height: 1.4;
+  }
+
+  /* fields */
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .field input, .field textarea {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    padding: 6px 0;
+    width: 100%;
+    outline: none;
+    resize: none;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field textarea:focus { border-bottom-color: var(--ink); }
+  .field textarea { min-height: 48px; line-height: 1.4; }
+
+  /* targets list */
+  .targets-list { list-style: none; padding: 0; margin: 0; }
+  .targets-list li {
+    display: grid;
+    grid-template-columns: 28px 1fr 50px;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .targets-list li:last-child { border-bottom: none; }
+  .targets-list li .id { color: var(--red); font-weight: 600; letter-spacing: 0.06em; }
+  .targets-list li .type { color: var(--ink); font-size: 9px; letter-spacing: 0.1em; }
+  .targets-list li input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    text-align: center;
+    padding: 4px;
+    outline: none;
+  }
+  .targets-list li input:focus { border-color: var(--ink); }
+  .targets-list .empty {
+    color: var(--dim-2);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    grid-template-columns: 1fr;
+    border-bottom: none;
+    padding: 10px 0;
+  }
+
+  .clear-all {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: color .15s, border-color .15s;
+  }
+  .clear-all:hover {
+    color: var(--red);
+    border-color: var(--red);
+  }
+
+  /* canvas */
+  .canvas-host {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #0a0a0c;
+  }
+  .canvas-host canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .canvas-meta {
+    position: absolute;
+    bottom: 12px; left: 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim-2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+  .canvas-meta.tr {
+    bottom: auto; top: 12px; left: auto; right: 16px;
+  }
+
+  /* ───────────  SCALE RULER  ─────────── */
+  .scale-ruler {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(0,0,0,0.6);
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.18em;
+    pointer-events: none;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .scale-ruler .label { text-transform: uppercase; }
+  .scale-ruler .bar {
+    width: 100px;
+    height: 2px;
+    background: #fff;
+    position: relative;
+  }
+  .scale-ruler .bar::before,
+  .scale-ruler .bar::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 8px;
+    background: #fff;
+    top: -3px;
+  }
+  .scale-ruler .bar::before { left: 0; }
+  .scale-ruler .bar::after { right: 0; }
+
+  /* ───────────  HISTORY BUTTONS  ─────────── */
+  .history-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  .history-btn:hover { background: rgba(255,255,255,0.04); border-color: var(--ink); }
+  .history-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ───────────  FILE MENU  ─────────── */
+  .file-menu-wrap { position: relative; display: inline-flex; }
+  .file-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #0d0d12;
+    border: 1px solid rgba(255,255,255,0.1);
+    min-width: 180px;
+    display: none;
+    z-index: 11;
+  }
+  .file-menu.open { display: block; }
+  .file-menu-item {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .file-menu-item:hover { background: rgba(255,255,255,0.06); }
+  .file-menu-item + .file-menu-item { border-top: 1px solid rgba(255,255,255,0.05); }
+
+  /* ───────────  TEMPLATES MODAL  ─────────── */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal.open { display: flex; }
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+  }
+  .modal-panel {
+    position: relative;
+    background: #0d0d12;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: calc(100% - 40px);
+    max-width: 800px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    padding: 28px 32px 32px;
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .modal-close:hover { color: var(--ink); }
+  .modal-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .modal-subtitle {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .template-card {
+    background: #131318;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: left;
+    font-family: var(--sans);
+    transition: border-color 0.15s;
+    min-height: 140px;
+  }
+  .template-card:hover { border-color: var(--red); }
+  .template-card .t-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+  .template-card .t-badge {
+    display: inline-block;
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    padding: 2px 6px;
+    border: 1px solid currentColor;
+    text-transform: uppercase;
+  }
+  .template-card .t-badge.speed,
+  .template-card .t-badge.short  { color: var(--green); }
+  .template-card .t-badge.medium,
+  .template-card .t-badge.long   { color: var(--amber); }
+  .template-card .t-stats {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+  }
+  .template-card .t-desc {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--dim);
+    line-height: 1.4;
+    flex: 1;
+  }
+  .template-card.empty {
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .template-card.empty .t-name { color: var(--dim); }
+  .template-card.empty:hover { border-color: var(--ink); }
+  .template-card.empty:hover .t-name { color: var(--ink); }
+
+  /* ───────────  SNAP TOGGLE  ─────────── */
+  .snap-toggle {
+    background: var(--red);
+    color: #fff;
+    border: 1px solid var(--red);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .snap-toggle.off {
+    background: transparent;
+    color: var(--dim);
+    border-color: var(--line-2);
+  }
+  .snap-toggle.off:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* ───────────  COORD TOOLTIP  ─────────── */
+  .coord-tip {
+    position: fixed;
+    background: #0d0d12;
+    border: 1px solid var(--red);
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink);
+    letter-spacing: 0.06em;
+    pointer-events: none;
+    z-index: 20;
+    display: none;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+  .coord-tip.show { display: block; }
+  .coord-tip.warn { border-color: #ffaa00; }
+  .coord-tip .warn-line { color: #ffaa00; font-weight: 600; }
+
+  /* ───────────  SHOTS SUMMARY  ─────────── */
+  .shots-summary {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .shots-summary .label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .shots-count {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .shots-class {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+    background: transparent;
+    margin-bottom: 8px;
+    color: var(--dim);
+  }
+  .shots-points {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* ───────────  HORS LIMITES BADGE  ─────────── */
+  .hors-limites {
+    display: none;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    animation: blink 1s infinite;
+    white-space: nowrap;
+    align-items: center;
+  }
+  .hors-limites.show { display: inline-flex; }
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+  }
+
+  /* ───────────  VALIDATION PANEL  ─────────── */
+  .validation-panel {
+    display: none;
+    margin-bottom: 18px;
+  }
+  .validation-panel.show { display: block; }
+  .validation-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .validation-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    padding: 5px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    line-height: 1.4;
+    background: transparent;
+    transition: background .15s;
+  }
+  .validation-row:last-child { border-bottom: none; }
+  .validation-row .icon { flex: 0 0 auto; font-weight: 600; }
+  .validation-row.warn .icon { color: #ffaa00; }
+  .validation-row.ok   .icon { color: #5ad99b; }
+  .validation-row.clickable { cursor: pointer; }
+  .validation-row.clickable:hover { background: rgba(255, 170, 0, 0.08); }
+
+  /* ───────────  HF MAX  ─────────── */
+  .hf-max {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* ───────────  PROPS PANEL  ─────────── */
+  .props-panel {
+    display: none;
+    background: #0a0a0c;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    margin-top: 16px;
+  }
+  .props-panel.show { display: block; }
+  .props-panel .props-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .props-panel .props-row {
+    margin-bottom: 10px;
+  }
+  .props-panel .props-row label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .props-panel .props-row label .val {
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  .props-panel input[type=range] {
+    width: 100%;
+    accent-color: var(--red);
+    cursor: pointer;
+  }
+  .props-panel input[type=number] {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 8px;
+    width: 100%;
+    outline: none;
+  }
+  .props-panel input[type=number]:focus { border-color: var(--ink); }
+  .props-panel .props-delete {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 9px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background .15s, color .15s;
+  }
+  .props-panel .props-delete:hover {
+    background: var(--red);
+    color: #fff;
+  }
+
+  /* ───────────  IO BANNER  ─────────── */
+  .io-banner {
+    position: fixed;
+    top: 48px;
+    left: 0; right: 0;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line-2);
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 9;
+  }
+  .io-banner.show { display: flex; }
+  .io-banner.error { color: var(--red); border-bottom-color: var(--red); }
+  .io-banner.success { color: var(--green); border-bottom-color: var(--green); }
+  .io-banner button {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .io-banner button:hover { background: rgba(255,255,255,0.06); }
+  .io-banner button.primary {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--bg);
+  }
+  .io-banner button.primary:hover {
+    filter: brightness(1.1);
+    background: var(--green);
+  }
+
+  /* ───────────  GRID LABELS  ─────────── */
+  .grid-label {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(235,229,210,0.25);
+    letter-spacing: 0.14em;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="left">
+    <span class="logo">OpMind<span>.</span></span>
+    <a class="back" href="/run-the-stage.html">← ACCUEIL</a>
+  </div>
+  <div class="center">
+    <input class="stagename" id="stageName" value="STAGE SANS NOM" />
+  </div>
+  <div class="right">
+    <div class="hors-limites" id="horsLimites"></div>
+    <div class="export-result" id="exportResult"></div>
+    <button class="history-btn" id="undoBtn" title="Annuler (Ctrl+Z)">↩ UNDO</button>
+    <button class="history-btn" id="redoBtn" title="Refaire (Ctrl+Y)">↪ REDO</button>
+    <div class="file-menu-wrap">
+      <button class="history-btn" id="fileMenuBtn" title="Fichier">≡ FICHIER</button>
+      <div class="file-menu" id="fileMenu">
+        <button class="file-menu-item" id="templatesBtn">TEMPLATES →</button>
+        <button class="file-menu-item" id="saveBtn">SAUVEGARDER</button>
+        <button class="file-menu-item" id="loadBtn">CHARGER</button>
+        <button class="file-menu-item" id="shareBtn">PARTAGER</button>
+      </div>
+    </div>
+    <button class="snap-toggle" id="snapToggle">SNAP 0.5M</button>
+    <button class="export" id="exportPdf">EXPORTER PDF</button>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div>
+      <h3>Outils</h3>
+      <button class="tool active" data-tool="paper">PAPIER</button>
+      <button class="tool" data-tool="popper">POPPER</button>
+      <button class="tool" data-tool="plate">PLATE</button>
+      <button class="tool" data-tool="noshoot">NO-SHOOT</button>
+      <button class="tool" data-tool="hardcover">HARD COVER</button>
+      <button class="tool" data-tool="port">PORT</button>
+      <button class="tool" data-tool="barrel">TONNEAU</button>
+      <button class="tool" data-tool="wall">MUR</button>
+      <button class="tool" data-tool="box">BOX</button>
+      <button class="tool" data-tool="arrow">FLÈCHE</button>
+      <button class="tool" data-tool="select">SÉLECTION</button>
+      <div class="tool-help" id="toolHelp">CLIC SUR LE SOL POUR PLACER</div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="validation-panel" id="validationPanel">
+      <h3>Conformité IPSC</h3>
+      <ul class="validation-list" id="validationList"></ul>
+    </div>
+
+    <div>
+      <h3>Stage</h3>
+      <div class="shots-summary">
+        <span class="label">Coups requis</span>
+        <div class="shots-count" id="shotsCount">0</div>
+        <div class="shots-class" id="shotsClass">—</div>
+        <div class="shots-points" id="shotsPoints">POINTS DISPO : 0</div>
+        <input id="f-shots" type="hidden" value="0">
+      </div>
+      <div class="field"><label>Cibles comptées</label><input id="f-counted" type="text" placeholder="4 IPSC, 2 NS"></div>
+      <div class="field"><label>Procédure</label><textarea id="f-procedure" rows="2" placeholder="Au signal sonore..."></textarea></div>
+      <div class="field"><label>Position initiale</label><input id="f-startpos" type="text" placeholder="Debout, holster"></div>
+      <div class="field"><label>Temps départ</label><input id="f-starttime" type="text" placeholder="Au signal sonore"></div>
+      <div class="field"><label>Arme prête</label><input id="f-gunready" type="text" placeholder="Chargée, sécurité"></div>
+      <div class="field"><label>Tireur prêt</label><input id="f-shooterready" type="text" placeholder="Mains naturelles"></div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+      <h3>Cibles</h3>
+      <ul class="targets-list" id="targetsList"></ul>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+      <div class="field"><label>Par time (s)</label><input id="f-partime" type="number" min="1" value="30"></div>
+      <div class="hf-max" id="hfMax">HF MAX : 0.00</div>
+    </div>
+
+    <div class="props-panel" id="propsPanel"></div>
+
+    <button class="clear-all" id="clearAll">Effacer tout</button>
+  </aside>
+
+  <div class="canvas-host" id="canvasHost">
+    <div class="canvas-meta tr">● ÉDITION 3D</div>
+    <div class="scale-ruler" id="scaleRuler">
+      <div class="label" id="scaleLabel">— M</div>
+      <div class="bar"></div>
+    </div>
+  </div>
+</div>
+
+<div class="coord-tip" id="coordTip"></div>
+<div class="io-banner" id="ioBanner"></div>
+<input type="file" id="loadFile" accept=".json,.opmind.json" style="display:none">
+
+<div class="modal" id="templatesModal">
+  <div class="modal-overlay"></div>
+  <div class="modal-panel">
+    <button class="modal-close" id="templatesCloseBtn" aria-label="Fermer">✕</button>
+    <h2 class="modal-title">Templates de stages</h2>
+    <p class="modal-subtitle">Sélectionne un template comme point de départ.</p>
+    <div class="templates-grid" id="templatesGrid"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvasHost = document.getElementById('canvasHost');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0a0a0c');
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+camera.position.set(0, 22, 16);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+canvasHost.appendChild(renderer.domElement);
+
+function resize() {
+  const w = canvasHost.clientWidth;
+  const h = canvasHost.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.minPolarAngle = Math.PI / 6;
+controls.maxPolarAngle = Math.PI / 2.4;
+controls.minDistance = 5;
+controls.maxDistance = 35;
+controls.enablePan = true;
+controls.target.set(0, 0, 0);
+controls.update();
+
+/* ──────────────  LIGHTS  ────────────── */
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+dir.position.set(10, 20, 10);
+dir.castShadow = true;
+dir.shadow.camera.near = 0.1;
+dir.shadow.camera.far = 50;
+dir.shadow.camera.left = -20;
+dir.shadow.camera.right = 20;
+dir.shadow.camera.top = 20;
+dir.shadow.camera.bottom = -20;
+dir.shadow.mapSize.set(1024, 1024);
+scene.add(dir);
+
+/* ──────────────  FLOOR + GRID  ────────────── */
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 20),
+  new THREE.MeshLambertMaterial({ color: 0x0f0f14 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const gridLines = [];
+for (let x = -15; x <= 15; x++) gridLines.push(x, 0.001, -10, x, 0.001, 10);
+for (let z = -10; z <= 10; z++) gridLines.push(-15, 0.001, z, 15, 0.001, z);
+const gridGeo = new THREE.BufferGeometry();
+gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridLines, 3));
+const grid = new THREE.LineSegments(
+  gridGeo,
+  new THREE.LineBasicMaterial({ color: 0x1e1e28 })
+);
+scene.add(grid);
+
+/* invisible raycast plane (avoids hitting the visible floor mesh) */
+const rcPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.MeshBasicMaterial({ visible: false })
+);
+rcPlane.rotation.x = -Math.PI / 2;
+scene.add(rcPlane);
+
+/* ──────────────  STATE  ────────────── */
+const TOOL_HELP = {
+  paper:     'CLIC SUR LE SOL POUR PLACER',
+  popper:    'CLIC SUR LE SOL POUR PLACER',
+  plate:     'CLIC SUR LE SOL POUR PLACER',
+  noshoot:   'CLIC SUR LE SOL POUR PLACER',
+  hardcover: 'CLIC SUR LE SOL POUR PLACER',
+  port:      'CLIC DÉPART → CLIC ARRIVÉE (COMME UN MUR)',
+  barrel:    'CLIC SUR LE SOL POUR PLACER',
+  wall:      'CLIC POINT A · CLIC POINT B',
+  box:       'CLIC POUR POSER LA BOX',
+  arrow:     'CLIC DÉPART → CLIC ARRIVÉE',
+  select:    'CLIC POUR SÉLECTIONNER · GLISSE POUR DÉPLACER',
+};
+const TYPE_LABEL = {
+  paper: 'PAPIER', popper: 'POPPER', plate: 'PLATE', noshoot: 'NO-SHOOT'
+};
+const TARGET_TYPES = ['paper', 'popper', 'plate', 'noshoot'];
+const DEFAULT_HITS = { paper: 2, popper: 1, plate: 1, noshoot: 0 };
+
+let tool = 'paper';
+const items = []; // { type, mesh, requiredHits?, label? }
+let selected = null;
+let dragging = false;
+const dragOffset = new THREE.Vector3();
+let wallStart = null;
+let wallMarker = null;
+let arrowStart = null;
+let arrowMarker = null;
+let portStart = null;
+let portMarker = null;
+
+/* ──────────────  SNAP  ────────────── */
+let snapEnabled = true;
+const snapBtn = document.getElementById('snapToggle');
+function updateSnapBtn() { snapBtn.classList.toggle('off', !snapEnabled); }
+snapBtn.addEventListener('click', () => { snapEnabled = !snapEnabled; updateSnapBtn(); });
+updateSnapBtn();
+function snap(v) { return snapEnabled ? Math.round(v * 2) / 2 : v; }
+
+/* ──────────────  BUILDERS  ────────────── */
+function makeLabel(text) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 64;
+  const cx = c.getContext('2d');
+
+  const pad = 8;
+  const r = 6;
+  const x0 = pad, y0 = pad;
+  const x1 = 128 - pad, y1 = 64 - pad;
+  cx.fillStyle = '#e84a3a';
+  cx.beginPath();
+  cx.moveTo(x0 + r, y0);
+  cx.lineTo(x1 - r, y0);
+  cx.quadraticCurveTo(x1, y0, x1, y0 + r);
+  cx.lineTo(x1, y1 - r);
+  cx.quadraticCurveTo(x1, y1, x1 - r, y1);
+  cx.lineTo(x0 + r, y1);
+  cx.quadraticCurveTo(x0, y1, x0, y1 - r);
+  cx.lineTo(x0, y0 + r);
+  cx.quadraticCurveTo(x0, y0, x0 + r, y0);
+  cx.closePath();
+  cx.fill();
+
+  cx.fillStyle = '#ffffff';
+  cx.font = 'bold 20px "JetBrains Mono", ui-monospace, monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(text, 64, 32);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sprite.scale.set(1.2, 0.6, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
+function makePaper() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 1.4, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0xc8a46e })
+  );
+  body.position.y = 0.7;
+  body.castShadow = true;
+  grp.add(body);
+
+  const zoneC = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.9, 0.01),
+    new THREE.MeshLambertMaterial({ color: 0xbc9660 })
+  );
+  zoneC.position.z = 0.02;
+  body.add(zoneC);
+
+  const zoneA = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.55, 0.01),
+    new THREE.MeshLambertMaterial({ color: 0xd4b07a })
+  );
+  zoneA.position.z = 0.025;
+  body.add(zoneA);
+
+  grp.userData.height = 1.4;
+  return grp;
+}
+
+function makePopper() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.28, 1.1, 8),
+    new THREE.MeshLambertMaterial({ color: 0x888888 })
+  );
+  body.position.y = 0.55;
+  body.castShadow = true;
+  grp.add(body);
+  grp.userData.height = 1.1;
+  return grp;
+}
+
+function makePlate() {
+  const grp = new THREE.Group();
+  const post = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8),
+    new THREE.MeshLambertMaterial({ color: 0x666666 })
+  );
+  post.position.y = 0.45;
+  post.castShadow = true;
+  grp.add(post);
+
+  const plate = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16),
+    new THREE.MeshLambertMaterial({ color: 0xaaaaaa })
+  );
+  plate.position.y = 0.9;
+  plate.castShadow = true;
+  grp.add(plate);
+
+  grp.userData.height = 0.96;
+  return grp;
+}
+
+function makeNoShoot() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 1.4, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0xe8e8e8 })
+  );
+  body.position.y = 0.7;
+  body.castShadow = true;
+  grp.add(body);
+
+  const crossMat = new THREE.MeshLambertMaterial({ color: 0xe84a3a, transparent: true, opacity: 0.5 });
+  const c1 = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 0.005), crossMat);
+  c1.rotation.z = Math.PI / 4;
+  c1.position.z = 0.025;
+  body.add(c1);
+
+  const c2 = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 0.005), crossMat);
+  c2.rotation.z = -Math.PI / 4;
+  c2.position.z = 0.025;
+  body.add(c2);
+
+  grp.userData.height = 1.4;
+  return grp;
+}
+
+function makeWall(ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.05) return null;
+  const angle = Math.atan2(dz, dx);
+
+  const grp = new THREE.Group();
+  const wallGeo = new THREE.BoxGeometry(length, 1.2, 0.15);
+  const wall = new THREE.Mesh(
+    wallGeo,
+    new THREE.MeshLambertMaterial({ color: 0x4a4a5a })
+  );
+  wall.position.y = 0.6;
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  grp.add(wall);
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(wallGeo),
+    new THREE.LineBasicMaterial({ color: 0x8888aa })
+  );
+  edges.position.y = 0.6;
+  grp.add(edges);
+
+  grp.position.set((ax + bx) / 2, 0, (az + bz) / 2);
+  grp.rotation.y = -angle;
+  grp.userData.length = length;
+  return grp;
+}
+
+function makeStartBox() {
+  const grp = new THREE.Group();
+  const w = 1.5, d = 1.0;
+  const pts = [
+    new THREE.Vector3(-w/2, 0.02, -d/2),
+    new THREE.Vector3( w/2, 0.02, -d/2),
+    new THREE.Vector3( w/2, 0.02,  d/2),
+    new THREE.Vector3(-w/2, 0.02,  d/2),
+    new THREE.Vector3(-w/2, 0.02, -d/2),
+  ];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xe84a3a }));
+  grp.add(line);
+
+  // a transparent flat box for raycast picking
+  const pick = new THREE.Mesh(
+    new THREE.BoxGeometry(w, 0.04, d),
+    new THREE.MeshBasicMaterial({ color: 0xe84a3a, transparent: true, opacity: 0 })
+  );
+  pick.position.y = 0.02;
+  grp.add(pick);
+
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 32;
+  const cx = c.getContext('2d');
+  cx.clearRect(0, 0, 128, 32);
+  cx.fillStyle = '#ffffff';
+  cx.font = 'bold 18px "JetBrains Mono", ui-monospace, monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText('START', 64, 16);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sprite.scale.set(0.9, 0.22, 1);
+  sprite.position.y = 0.4;
+  sprite.renderOrder = 999;
+  grp.add(sprite);
+
+  return grp;
+}
+
+function makeArrowNumber(n) {
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 48;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#5ad99b';
+  cx.beginPath();
+  cx.arc(24, 24, 22, 0, Math.PI * 2);
+  cx.fill();
+  cx.fillStyle = '#ffffff';
+  cx.font = 'bold 22px "JetBrains Mono", ui-monospace, monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(String(n), 24, 24);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sprite.scale.set(0.5, 0.5, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
+function makeArrow(ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.05) return null;
+  const angle = Math.atan2(dz, dx);
+
+  const grp = new THREE.Group();
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, length, 8),
+    new THREE.MeshLambertMaterial({ color: 0x5ad99b })
+  );
+  body.rotation.z = Math.PI / 2; // lay along local +X
+  body.position.set(0, 0.05, 0);
+  grp.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.ConeGeometry(0.15, 0.35, 8),
+    new THREE.MeshLambertMaterial({ color: 0x5ad99b })
+  );
+  head.rotation.z = -Math.PI / 2; // tip points along local +X
+  head.position.set(length / 2, 0.05, 0);
+  grp.add(head);
+
+  grp.position.set((ax + bx) / 2, 0, (az + bz) / 2);
+  grp.rotation.y = -angle;
+  grp.userData.type = 'arrow';
+  grp.userData.length = length;
+  return grp;
+}
+
+function makePropLabel(text) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 64;
+  const cx = c.getContext('2d');
+  const pad = 8, r = 6;
+  const x0 = pad, y0 = pad, x1 = 128 - pad, y1 = 64 - pad;
+  cx.fillStyle = '#3a3a45';
+  cx.beginPath();
+  cx.moveTo(x0 + r, y0);
+  cx.lineTo(x1 - r, y0);
+  cx.quadraticCurveTo(x1, y0, x1, y0 + r);
+  cx.lineTo(x1, y1 - r);
+  cx.quadraticCurveTo(x1, y1, x1 - r, y1);
+  cx.lineTo(x0 + r, y1);
+  cx.quadraticCurveTo(x0, y1, x0, y1 - r);
+  cx.lineTo(x0, y0 + r);
+  cx.quadraticCurveTo(x0, y0, x0 + r, y0);
+  cx.closePath();
+  cx.fill();
+  cx.fillStyle = '#ebe5d2';
+  cx.font = 'bold 16px "JetBrains Mono", ui-monospace, monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sprite.scale.set(1.0, 0.5, 1);
+  sprite.renderOrder = 999;
+  return sprite;
+}
+
+function makeHardCover() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 1.4, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0x1a1a2e })
+  );
+  body.position.y = 0.7;
+  body.castShadow = true;
+  grp.add(body);
+
+  const stripeMat = new THREE.MeshLambertMaterial({ color: 0x3a3aff, transparent: true, opacity: 0.8 });
+  const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.5, 0.05), stripeMat);
+  s1.rotation.z = Math.PI / 4;
+  s1.position.z = 0.025;
+  body.add(s1);
+
+  const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.5, 0.05), stripeMat);
+  s2.rotation.z = -Math.PI / 4;
+  s2.position.z = 0.025;
+  body.add(s2);
+
+  grp.userData.height = 1.4;
+  return grp;
+}
+
+function makeBarrel() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.3, 0.8, 12),
+    new THREE.MeshLambertMaterial({ color: 0x5a3a1a })
+  );
+  body.position.y = 0.4;
+  body.castShadow = true;
+  grp.add(body);
+
+  const hoopMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
+  [0.1, 0.4, 0.7].forEach((hy) => {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.03, 6, 12), hoopMat);
+    hoop.rotation.x = Math.PI / 2;
+    hoop.position.y = hy;
+    grp.add(hoop);
+  });
+
+  grp.userData.height = 0.8;
+  return grp;
+}
+
+function makePort(ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.5) return null;
+  const angle = Math.atan2(dz, dx);
+
+  const grp = new THREE.Group();
+  const segL = length * 0.4;
+  const gap  = length * 0.2;
+
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
+  const segGeo  = new THREE.BoxGeometry(segL, 1.2, 0.15);
+
+  const leftWall = new THREE.Mesh(segGeo, wallMat);
+  leftWall.position.set(-length / 2 + segL / 2, 0.6, 0);
+  leftWall.castShadow = true;
+  leftWall.receiveShadow = true;
+  grp.add(leftWall);
+
+  const rightWall = new THREE.Mesh(segGeo, wallMat);
+  rightWall.position.set(length / 2 - segL / 2, 0.6, 0);
+  rightWall.castShadow = true;
+  rightWall.receiveShadow = true;
+  grp.add(rightWall);
+
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x8888aa });
+  const leftEdges = new THREE.LineSegments(new THREE.EdgesGeometry(segGeo), edgeMat);
+  leftEdges.position.copy(leftWall.position);
+  grp.add(leftEdges);
+  const rightEdges = new THREE.LineSegments(new THREE.EdgesGeometry(segGeo), edgeMat);
+  rightEdges.position.copy(rightWall.position);
+  grp.add(rightEdges);
+
+  // Lintel above the gap
+  const lintel = new THREE.Mesh(
+    new THREE.BoxGeometry(gap, 0.15, 0.15),
+    new THREE.MeshLambertMaterial({ color: 0x2a2a35 })
+  );
+  lintel.position.set(0, 1.2 - 0.075, 0);
+  lintel.castShadow = true;
+  grp.add(lintel);
+
+  grp.position.set((ax + bx) / 2, 0, (az + bz) / 2);
+  grp.rotation.y = -angle;
+  grp.userData.length = length;
+  return grp;
+}
+
+/* ──────────────  PLACEMENT / SELECTION / DELETE  ────────────── */
+function placeTarget(type, x, z) {
+  let mesh;
+  if (type === 'paper')        mesh = makePaper();
+  else if (type === 'popper')  mesh = makePopper();
+  else if (type === 'plate')   mesh = makePlate();
+  else if (type === 'noshoot') mesh = makeNoShoot();
+  else return null;
+  mesh.position.set(x, 0, z);
+  scene.add(mesh);
+  const item = { type, mesh, requiredHits: DEFAULT_HITS[type] ?? 1, label: null };
+  items.push(item);
+  refreshLabels();
+  return item;
+}
+
+function refreshLabels() {
+  let nT = 0, nHC = 0;
+  items.forEach(it => {
+    if (TARGET_TYPES.includes(it.type)) {
+      nT++;
+      if (it.label) it.mesh.remove(it.label);
+      const lbl = makeLabel('T' + nT);
+      const h = it.mesh.userData.height || 1.2;
+      lbl.position.set(0, h + 0.3, 0);
+      it.mesh.add(lbl);
+      it.label = lbl;
+    } else if (it.type === 'hardcover') {
+      nHC++;
+      if (it.label) it.mesh.remove(it.label);
+      const lbl = makeLabel('HC' + nHC);
+      const h = it.mesh.userData.height || 1.2;
+      lbl.position.set(0, h + 0.3, 0);
+      it.mesh.add(lbl);
+      it.label = lbl;
+    } else if (it.type === 'barrel') {
+      if (it.label) it.mesh.remove(it.label);
+      const lbl = makePropLabel('PROP');
+      const h = it.mesh.userData.height || 0.8;
+      lbl.position.set(0, h + 0.3, 0);
+      it.mesh.add(lbl);
+      it.label = lbl;
+    } else if (it.type === 'port') {
+      if (it.label) it.mesh.remove(it.label);
+      const lbl = makePropLabel('PORT');
+      lbl.position.set(0, 1.6, 0);
+      it.mesh.add(lbl);
+      it.label = lbl;
+    }
+  });
+  updateTargetsList();
+}
+
+function refreshArrowNumbers() {
+  let n = 0;
+  items.forEach(it => {
+    if (it.type !== 'arrow') return;
+    n++;
+    if (it.label) it.mesh.remove(it.label);
+    const sprite = makeArrowNumber(n);
+    sprite.position.set(0, 0.4, 0);
+    it.mesh.add(sprite);
+    it.label = sprite;
+  });
+}
+
+function updateEmissive(item) {
+  if (!item || !item.mesh) return;
+  let color = 0x000000, intensity = 0;
+  if (item.errorHighlight) {
+    color = 0xff4400; intensity = 0.3;
+  } else if (selected === item) {
+    color = 0xe84a3a; intensity = 0.3;
+  }
+  item.mesh.traverse(o => {
+    if (o.isMesh && o.material && 'emissive' in o.material) {
+      o.material.emissive.setHex(color);
+      o.material.emissiveIntensity = intensity;
+    }
+  });
+}
+
+/* ──────────────  PROPS PANEL  ────────────── */
+const propsPanel = document.getElementById('propsPanel');
+
+function rotDeg(item) {
+  return Math.round(((item.mesh.rotation.y * 180 / Math.PI) % 360 + 360) % 360);
+}
+
+function showProps(item) {
+  if (!item) {
+    propsPanel.classList.remove('show');
+    propsPanel.innerHTML = '';
+    return;
+  }
+  const TYPE_DISPLAY = {
+    paper: 'PAPIER', popper: 'POPPER', plate: 'PLATE', noshoot: 'NO-SHOOT',
+    hardcover: 'HARD COVER', wall: 'MUR', port: 'PORT', barrel: 'TONNEAU',
+    arrow: 'FLÈCHE', startbox: 'BOX DE DÉPART',
+  };
+  const typeLabel = TYPE_DISPLAY[item.type] || item.type.toUpperCase();
+  const rows = [];
+
+  if (TARGET_TYPES.includes(item.type) || item.type === 'hardcover') {
+    rows.push(`
+      <div class="props-row" data-prop="rotation">
+        <label>Rotation <span class="val">${rotDeg(item)}°</span></label>
+        <input type="range" min="0" max="360" step="1" value="${rotDeg(item)}">
+      </div>`);
+    if (TARGET_TYPES.includes(item.type)) {
+      rows.push(`
+        <div class="props-row" data-prop="hits">
+          <label>Coups requis <span class="val">${item.requiredHits}</span></label>
+          <input type="number" min="0" max="20" value="${item.requiredHits}">
+        </div>`);
+    }
+  } else if (item.type === 'wall' || item.type === 'port') {
+    const h = (item.mesh.scale.y * 1.2);
+    const t = (item.mesh.scale.z * 0.15);
+    rows.push(`
+      <div class="props-row" data-prop="height">
+        <label>Hauteur (m) <span class="val">${h.toFixed(2)}</span></label>
+        <input type="range" min="0.5" max="3.0" step="0.1" value="${h.toFixed(2)}">
+      </div>
+      <div class="props-row" data-prop="thickness">
+        <label>Épaisseur (m) <span class="val">${t.toFixed(2)}</span></label>
+        <input type="range" min="0.1" max="0.5" step="0.05" value="${t.toFixed(2)}">
+      </div>`);
+  } else if (item.type === 'barrel') {
+    rows.push(`
+      <div class="props-row" data-prop="rotation">
+        <label>Rotation <span class="val">${rotDeg(item)}°</span></label>
+        <input type="range" min="0" max="360" step="1" value="${rotDeg(item)}">
+      </div>`);
+  }
+
+  propsPanel.innerHTML =
+    `<div class="props-head">Propriétés — ${typeLabel}</div>` +
+    rows.join('') +
+    `<button class="props-delete" id="propsDeleteBtn">Supprimer</button>`;
+  propsPanel.classList.add('show');
+
+  const rotInput = propsPanel.querySelector('[data-prop="rotation"] input');
+  if (rotInput) {
+    rotInput.addEventListener('input', (e) => {
+      const deg = parseFloat(e.target.value);
+      item.mesh.rotation.y = deg * Math.PI / 180;
+      const valEl = propsPanel.querySelector('[data-prop="rotation"] .val');
+      if (valEl) valEl.textContent = Math.round(deg) + '°';
+    });
+  }
+  const hitsInput = propsPanel.querySelector('[data-prop="hits"] input');
+  if (hitsInput) {
+    hitsInput.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      item.requiredHits = isNaN(v) ? 0 : Math.max(0, Math.min(20, v));
+      const valEl = propsPanel.querySelector('[data-prop="hits"] .val');
+      if (valEl) valEl.textContent = item.requiredHits;
+      updateTargetsList();
+    });
+  }
+  const heightInput = propsPanel.querySelector('[data-prop="height"] input');
+  if (heightInput) {
+    heightInput.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      item.mesh.scale.y = v / 1.2;
+      const valEl = propsPanel.querySelector('[data-prop="height"] .val');
+      if (valEl) valEl.textContent = v.toFixed(2);
+    });
+  }
+  const thickInput = propsPanel.querySelector('[data-prop="thickness"] input');
+  if (thickInput) {
+    thickInput.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      item.mesh.scale.z = v / 0.15;
+      const valEl = propsPanel.querySelector('[data-prop="thickness"] .val');
+      if (valEl) valEl.textContent = v.toFixed(2);
+    });
+  }
+  const delBtn = propsPanel.querySelector('#propsDeleteBtn');
+  if (delBtn) {
+    delBtn.addEventListener('click', () => {
+      pushUndo();
+      deleteItem(item);
+    });
+  }
+}
+
+function syncRotationSlider() {
+  if (!selected) return;
+  const rotInput = propsPanel.querySelector('[data-prop="rotation"] input');
+  const valEl = propsPanel.querySelector('[data-prop="rotation"] .val');
+  if (!rotInput || !valEl) return;
+  const deg = rotDeg(selected);
+  rotInput.value = deg;
+  valEl.textContent = deg + '°';
+}
+
+function selectItem(item) {
+  if (selected === item) return;
+  const oldSelected = selected;
+  selected = item;
+  if (oldSelected) updateEmissive(oldSelected);
+  if (item) updateEmissive(item);
+  showProps(item);
+}
+
+function deleteItem(item) {
+  if (!item) return;
+  if (selected === item) selectItem(null);
+  scene.remove(item.mesh);
+  const i = items.indexOf(item);
+  if (i >= 0) items.splice(i, 1);
+  refreshLabels();
+  refreshArrowNumbers();
+  updateTargetsList();
+}
+
+/* ──────────────  RAYCAST  ────────────── */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function setMouseFromEvent(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+function getGroundPoint() {
+  raycaster.setFromCamera(mouse, camera);
+  const ints = raycaster.intersectObject(rcPlane);
+  return ints.length ? ints[0].point : null;
+}
+
+function pickItem() {
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = [];
+  items.forEach(it => {
+    it.mesh.traverse(o => {
+      if (o.isMesh) meshes.push(o);
+    });
+  });
+  const ints = raycaster.intersectObjects(meshes, false);
+  if (ints.length === 0) return null;
+  let obj = ints[0].object;
+  while (obj.parent && obj.parent !== scene) obj = obj.parent;
+  return items.find(it => it.mesh === obj) || null;
+}
+
+/* ──────────────  POINTER HANDLERS  ────────────── */
+let downPos = null;
+let downTime = 0;
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  setMouseFromEvent(e);
+  downPos = { x: e.clientX, y: e.clientY };
+  downTime = performance.now();
+  preDragSnapshot = null;
+  preDragPos = null;
+
+  if (tool === 'select') {
+    const hit = pickItem();
+    if (hit) {
+      selectItem(hit);
+      dragging = true;
+      const gp = getGroundPoint();
+      if (gp) dragOffset.copy(hit.mesh.position).sub(gp);
+      controls.enabled = false;
+      preDragSnapshot = captureState();
+      preDragPos = { x: hit.mesh.position.x, z: hit.mesh.position.z };
+    } else {
+      selectItem(null);
+    }
+  }
+});
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  setMouseFromEvent(e);
+  if (selected) {
+    const gp = getGroundPoint();
+    if (gp) {
+      const nx = snap(gp.x + dragOffset.x);
+      const nz = snap(gp.z + dragOffset.z);
+      selected.mesh.position.set(nx, selected.mesh.position.y, nz);
+    }
+  }
+});
+
+function endDrag() {
+  if (dragging) {
+    dragging = false;
+    controls.enabled = true;
+  }
+}
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (e.button !== 0) return;
+  const wasDrag = dragging;
+  const moved = downPos && (Math.abs(e.clientX - downPos.x) > 3 || Math.abs(e.clientY - downPos.y) > 3);
+  endDrag();
+  if (wasDrag) {
+    if (preDragSnapshot && preDragPos && selected) {
+      const mvd = Math.abs(selected.mesh.position.x - preDragPos.x) > 1e-4 ||
+                  Math.abs(selected.mesh.position.z - preDragPos.z) > 1e-4;
+      if (mvd) {
+        undoStack.push(preDragSnapshot);
+        if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+        redoStack.length = 0;
+        updateUndoRedoButtons();
+        runValidation();
+      }
+    }
+    preDragSnapshot = null;
+    preDragPos = null;
+    downPos = null;
+    return;
+  }
+  if (moved) { downPos = null; return; } // OrbitControls rotation/pan
+  downPos = null;
+  setMouseFromEvent(e);
+
+  if (tool === 'select') return;
+
+  if (TARGET_TYPES.includes(tool)) {
+    const gp = getGroundPoint();
+    if (gp) {
+      pushUndo();
+      placeTarget(tool, snap(gp.x), snap(gp.z));
+    }
+  } else if (tool === 'hardcover') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    pushUndo();
+    const mesh = makeHardCover();
+    mesh.position.set(snap(gp.x), 0, snap(gp.z));
+    scene.add(mesh);
+    items.push({ type: 'hardcover', mesh, label: null });
+    refreshLabels();
+  } else if (tool === 'barrel') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    pushUndo();
+    const mesh = makeBarrel();
+    mesh.position.set(snap(gp.x), 0, snap(gp.z));
+    scene.add(mesh);
+    items.push({ type: 'barrel', mesh, label: null });
+    refreshLabels();
+  } else if (tool === 'port') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    const sx = snap(gp.x), sz = snap(gp.z);
+    if (!portStart) {
+      portStart = { x: sx, z: sz };
+      portMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 12, 8),
+        new THREE.MeshBasicMaterial({ color: 0x8888aa })
+      );
+      portMarker.position.set(sx, 0.1, sz);
+      scene.add(portMarker);
+    } else {
+      pushUndo();
+      const port = makePort(portStart.x, portStart.z, sx, sz);
+      if (port) {
+        scene.add(port);
+        items.push({ type: 'port', mesh: port, label: null });
+        refreshLabels();
+      }
+      scene.remove(portMarker);
+      portMarker = null;
+      portStart = null;
+    }
+  } else if (tool === 'wall') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    const sx = snap(gp.x), sz = snap(gp.z);
+    if (!wallStart) {
+      wallStart = { x: sx, z: sz };
+      wallMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 12, 8),
+        new THREE.MeshBasicMaterial({ color: 0xe84a3a })
+      );
+      wallMarker.position.set(sx, 0.1, sz);
+      scene.add(wallMarker);
+    } else {
+      pushUndo();
+      const wall = makeWall(wallStart.x, wallStart.z, sx, sz);
+      if (wall) {
+        scene.add(wall);
+        items.push({ type: 'wall', mesh: wall });
+      }
+      scene.remove(wallMarker);
+      wallMarker = null;
+      wallStart = null;
+      updateTargetsList();
+    }
+  } else if (tool === 'box') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    pushUndo();
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].type === 'startbox') {
+        scene.remove(items[i].mesh);
+        items.splice(i, 1);
+      }
+    }
+    const box = makeStartBox();
+    box.position.set(snap(gp.x), 0, snap(gp.z));
+    scene.add(box);
+    items.push({ type: 'startbox', mesh: box });
+    updateTargetsList();
+  } else if (tool === 'arrow') {
+    const gp = getGroundPoint();
+    if (!gp) return;
+    const sx = snap(gp.x), sz = snap(gp.z);
+    if (!arrowStart) {
+      arrowStart = { x: sx, z: sz };
+      arrowMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 12, 8),
+        new THREE.MeshBasicMaterial({ color: 0x5ad99b })
+      );
+      arrowMarker.position.set(sx, 0.1, sz);
+      scene.add(arrowMarker);
+    } else {
+      pushUndo();
+      const arrow = makeArrow(arrowStart.x, arrowStart.z, sx, sz);
+      if (arrow) {
+        scene.add(arrow);
+        items.push({ type: 'arrow', mesh: arrow, label: null });
+        refreshArrowNumbers();
+      }
+      scene.remove(arrowMarker);
+      arrowMarker = null;
+      arrowStart = null;
+    }
+  }
+});
+renderer.domElement.addEventListener('pointerleave', endDrag);
+
+/* ──────────────  KEYBOARD  ────────────── */
+window.addEventListener('keydown', (e) => {
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+  const mod = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+
+  if (mod && key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  } else if (mod && (key === 'y' || (key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    redo();
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selected) {
+      e.preventDefault();
+      pushUndo();
+      deleteItem(selected);
+    }
+  } else if (key === 'r' && selected) {
+    const t = selected.type;
+    if (TARGET_TYPES.includes(t) || t === 'hardcover' || t === 'barrel') {
+      e.preventDefault();
+      const delta = e.shiftKey ? -15 : 15;
+      selected.mesh.rotation.y += delta * Math.PI / 180;
+      syncRotationSlider();
+    }
+  } else if (e.key === 'Escape') {
+    if (wallMarker) { scene.remove(wallMarker); wallMarker = null; }
+    wallStart = null;
+    if (arrowMarker) { scene.remove(arrowMarker); arrowMarker = null; }
+    arrowStart = null;
+    if (portMarker) { scene.remove(portMarker); portMarker = null; }
+    portStart = null;
+    selectItem(null);
+  }
+});
+
+/* ──────────────  TOOLBAR  ────────────── */
+const toolButtons = document.querySelectorAll('.tool');
+const helpEl = document.getElementById('toolHelp');
+function setActiveTool(name, btn) {
+  toolButtons.forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  tool = name;
+  helpEl.textContent = TOOL_HELP[name];
+  if (btn) btn.after(helpEl);
+  if (wallMarker) { scene.remove(wallMarker); wallMarker = null; }
+  wallStart = null;
+  if (arrowMarker) { scene.remove(arrowMarker); arrowMarker = null; }
+  arrowStart = null;
+  if (portMarker) { scene.remove(portMarker); portMarker = null; }
+  portStart = null;
+  if (!TARGET_TYPES.includes(name)) coordTip.classList.remove('show');
+}
+toolButtons.forEach(btn => {
+  btn.addEventListener('click', () => setActiveTool(btn.dataset.tool, btn));
+});
+
+/* ──────────────  TARGETS LIST  ────────────── */
+const targetsList = document.getElementById('targetsList');
+function updateTargetsList() {
+  const targets = items.filter(it => TARGET_TYPES.includes(it.type));
+  targetsList.innerHTML = '';
+  if (targets.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = '// Aucune cible placée';
+    targetsList.appendChild(li);
+    updateMetrics();
+    return;
+  }
+  targets.forEach((t, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="id">T${i + 1}</span>
+      <span class="type">${TYPE_LABEL[t.type]}</span>
+      <input type="number" min="0" max="20" value="${t.requiredHits}">
+    `;
+    const input = li.querySelector('input');
+    input.addEventListener('input', e => {
+      const v = parseInt(e.target.value, 10);
+      t.requiredHits = isNaN(v) ? 0 : Math.max(0, Math.min(20, v));
+      updateMetrics();
+    });
+    targetsList.appendChild(li);
+  });
+  updateMetrics();
+}
+
+/* ──────────────  METRICS (shots / class / points / HF / warn)  ────────────── */
+const shotsCountEl = document.getElementById('shotsCount');
+const shotsClassEl = document.getElementById('shotsClass');
+const shotsPointsEl = document.getElementById('shotsPoints');
+const fShotsEl = document.getElementById('f-shots');
+const horsLimitesEl = document.getElementById('horsLimites');
+const hfMaxEl = document.getElementById('hfMax');
+const fPartimeEl = document.getElementById('f-partime');
+
+function classifyShots(n) {
+  if (n <= 6)  return { label: 'SPEED',           color: '#5ad99b' };
+  if (n <= 8)  return { label: 'SHORT',           color: '#5ad99b' };
+  if (n <= 24) return { label: 'MEDIUM',          color: 'var(--amber)' };
+  if (n <= 32) return { label: 'LONG',            color: 'var(--amber)' };
+  return         { label: '⚠ HORS LIMITES',       color: 'var(--red)' };
+}
+
+function updateMetrics() {
+  const targets = items.filter(it => TARGET_TYPES.includes(it.type));
+  const totalShots = targets.reduce((s, t) => s + (t.requiredHits || 0), 0);
+  const paperCount = items.filter(it => it.type === 'paper').length;
+  const points = paperCount * 5;
+
+  shotsCountEl.textContent = totalShots;
+  fShotsEl.value = totalShots;
+
+  const cls = classifyShots(totalShots);
+  shotsClassEl.textContent = cls.label;
+  shotsClassEl.style.color = cls.color;
+
+  shotsPointsEl.textContent = `POINTS DISPO : ${points}`;
+
+  const partime = parseFloat(fPartimeEl.value);
+  const validPartime = isFinite(partime) && partime > 0 ? partime : 0;
+  const hf = validPartime > 0 ? points / validPartime : 0;
+  hfMaxEl.textContent = `HF MAX : ${hf.toFixed(2)}`;
+
+  if (totalShots > 32) {
+    horsLimitesEl.textContent = `⚠ STAGE HORS LIMITES IPSC — ${totalShots} COUPS`;
+    horsLimitesEl.classList.add('show');
+  } else {
+    horsLimitesEl.classList.remove('show');
+  }
+
+  runValidation();
+}
+fPartimeEl.addEventListener('input', updateMetrics);
+
+/* ──────────────  VALIDATION IPSC  ────────────── */
+const validationPanel = document.getElementById('validationPanel');
+const validationList  = document.getElementById('validationList');
+
+function panTo(pos) {
+  const startTarget = controls.target.clone();
+  const endTarget   = new THREE.Vector3(pos.x, 0, pos.z);
+  let frame = 0;
+  const N = 20;
+  function step() {
+    frame++;
+    const t = frame / N;
+    const newTarget = startTarget.clone().lerp(endTarget, t);
+    const delta = newTarget.clone().sub(controls.target);
+    controls.target.copy(newTarget);
+    camera.position.add(delta);
+    if (frame < N) requestAnimationFrame(step);
+  }
+  step();
+}
+
+function escapeText(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function runValidation() {
+  // Reset error flags
+  items.forEach(it => { it.errorHighlight = false; });
+
+  const alerts = [];
+  const startbox = items.find(it => it.type === 'startbox');
+  const papers   = items.filter(it => it.type === 'paper');
+  const noshoots = items.filter(it => it.type === 'noshoot');
+  const targetItems = items.filter(it => TARGET_TYPES.includes(it.type));
+  const totalShots = targetItems.reduce((s, t) => s + (t.requiredHits || 0), 0);
+
+  // Build numbering maps (T#, HC#, NS#)
+  const tLabel = new Map();
+  const hcLabel = new Map();
+  const nsLabel = new Map();
+  let nT = 0, nHC = 0, nNS = 0;
+  items.forEach(it => {
+    if (TARGET_TYPES.includes(it.type)) { nT++; tLabel.set(it, 'T' + nT); }
+    if (it.type === 'hardcover')        { nHC++; hcLabel.set(it, 'HC' + nHC); }
+    if (it.type === 'noshoot')          { nNS++; nsLabel.set(it, 'NS' + nNS); }
+  });
+
+  // Rule 1: target too close to startbox (< 1.5m)
+  if (startbox) {
+    items.forEach(it => {
+      if (!(TARGET_TYPES.includes(it.type) || it.type === 'hardcover')) return;
+      const d = Math.hypot(
+        it.mesh.position.x - startbox.mesh.position.x,
+        it.mesh.position.z - startbox.mesh.position.z
+      );
+      if (d < 1.5) {
+        const label = tLabel.get(it) || hcLabel.get(it) || '?';
+        alerts.push({ message: `${label} trop proche du départ (${d.toFixed(1)}m — min 1.5m)`, item: it });
+        it.errorHighlight = true;
+      }
+    });
+  }
+
+  // Rule 2: empty stage
+  if (targetItems.length === 0 && items.length > 0) {
+    alerts.push({ message: 'Aucune cible placée' });
+  }
+
+  // Rule 3: shots > 32
+  if (totalShots > 32) {
+    alerts.push({ message: `Coups hors limite IPSC (max 32) — ${totalShots} coups` });
+  }
+
+  // Rule 4: no-shoot isolated (no paper within 1m)
+  noshoots.forEach(ns => {
+    const hasPaperNearby = papers.some(p => {
+      const d = Math.hypot(
+        ns.mesh.position.x - p.mesh.position.x,
+        ns.mesh.position.z - p.mesh.position.z
+      );
+      return d < 1.0;
+    });
+    if (!hasPaperNearby) {
+      const label = nsLabel.get(ns) || 'NS';
+      alerts.push({ message: `${label} isolé — aucune cible papier à proximité`, item: ns });
+      ns.errorHighlight = true;
+    }
+  });
+
+  // Rule 5: missing startbox
+  if (targetItems.length > 0 && !startbox) {
+    alerts.push({ message: 'Pas de box de départ' });
+  }
+
+  // Refresh emissives based on errorHighlight flags
+  items.forEach(updateEmissive);
+
+  // Hide panel if no objects placed at all
+  if (items.length === 0) {
+    validationPanel.classList.remove('show');
+    validationList.innerHTML = '';
+    return;
+  }
+  validationPanel.classList.add('show');
+
+  if (alerts.length === 0) {
+    validationList.innerHTML = `<li class="validation-row ok"><span class="icon">✓</span><span>Stage conforme IPSC</span></li>`;
+    return;
+  }
+
+  validationList.innerHTML = alerts.map((a, i) => {
+    const clickable = a.item ? ' clickable' : '';
+    const idx = a.item ? ` data-alert-i="${i}"` : '';
+    const title = a.item ? ' title="Cliquer pour centrer la caméra"' : '';
+    return `<li class="validation-row warn${clickable}"${idx}${title}><span class="icon">⚠</span><span>${escapeText(a.message)}</span></li>`;
+  }).join('');
+
+  validationList.querySelectorAll('.validation-row[data-alert-i]').forEach(row => {
+    const i = parseInt(row.dataset.alertI, 10);
+    const alert = alerts[i];
+    if (!alert || !alert.item) return;
+    row.addEventListener('click', () => {
+      panTo({ x: alert.item.mesh.position.x, z: alert.item.mesh.position.z });
+    });
+  });
+}
+
+/* ──────────────  UNDO / REDO  ────────────── */
+const undoStack = [];
+const redoStack = [];
+const UNDO_LIMIT = 50;
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+let preDragSnapshot = null;
+let preDragPos = null;
+
+function captureState() {
+  return JSON.stringify(items.map(it => {
+    const o = {
+      type: it.type,
+      x: it.mesh.position.x,
+      z: it.mesh.position.z,
+      rotation: it.mesh.rotation.y,
+    };
+    if (TARGET_TYPES.includes(it.type)) {
+      o.requiredHits = it.requiredHits;
+    } else if (it.type === 'wall' || it.type === 'port') {
+      o.length = it.mesh.userData.length;
+      o.scaleY = it.mesh.scale.y;
+      o.scaleZ = it.mesh.scale.z;
+    } else if (it.type === 'arrow') {
+      const mx = it.mesh.position.x;
+      const mz = it.mesh.position.z;
+      const theta = -it.mesh.rotation.y;
+      const L = it.mesh.userData.length || 0;
+      const dx = L * Math.cos(theta);
+      const dz = L * Math.sin(theta);
+      o.ax = mx - dx / 2;
+      o.az = mz - dz / 2;
+      o.bx = mx + dx / 2;
+      o.bz = mz + dz / 2;
+    }
+    return o;
+  }));
+}
+
+function pushUndo() {
+  undoStack.push(captureState());
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoRedoButtons();
+  autosave();
+}
+
+function restoreState(snapshot) {
+  selectItem(null);
+  items.forEach(it => scene.remove(it.mesh));
+  items.length = 0;
+  if (wallMarker) { scene.remove(wallMarker); wallMarker = null; }
+  wallStart = null;
+  if (arrowMarker) { scene.remove(arrowMarker); arrowMarker = null; }
+  arrowStart = null;
+  if (portMarker) { scene.remove(portMarker); portMarker = null; }
+  portStart = null;
+
+  const data = JSON.parse(snapshot);
+  data.forEach(o => {
+    let mesh = null;
+    if (o.type === 'paper')          mesh = makePaper();
+    else if (o.type === 'popper')    mesh = makePopper();
+    else if (o.type === 'plate')     mesh = makePlate();
+    else if (o.type === 'noshoot')   mesh = makeNoShoot();
+    else if (o.type === 'hardcover') mesh = makeHardCover();
+    else if (o.type === 'barrel')    mesh = makeBarrel();
+    else if (o.type === 'startbox')  mesh = makeStartBox();
+    else if (o.type === 'wall' || o.type === 'port') {
+      const theta = -(o.rotation || 0);
+      const L = o.length || 0;
+      const dx = L * Math.cos(theta);
+      const dz = L * Math.sin(theta);
+      const ax = o.x - dx / 2, az = o.z - dz / 2;
+      const bx = o.x + dx / 2, bz = o.z + dz / 2;
+      mesh = (o.type === 'wall') ? makeWall(ax, az, bx, bz) : makePort(ax, az, bx, bz);
+      if (mesh) {
+        if (typeof o.scaleY === 'number') mesh.scale.y = o.scaleY;
+        if (typeof o.scaleZ === 'number') mesh.scale.z = o.scaleZ;
+      }
+    }
+    else if (o.type === 'arrow') {
+      mesh = makeArrow(o.ax, o.az, o.bx, o.bz);
+    }
+    if (!mesh) return;
+    if (o.type !== 'wall' && o.type !== 'arrow' && o.type !== 'port') {
+      mesh.position.set(o.x, 0, o.z);
+      if (o.rotation) mesh.rotation.y = o.rotation;
+    }
+    scene.add(mesh);
+    const item = { type: o.type, mesh, label: null };
+    if (TARGET_TYPES.includes(o.type)) {
+      item.requiredHits = (typeof o.requiredHits === 'number') ? o.requiredHits : (DEFAULT_HITS[o.type] ?? 1);
+    }
+    items.push(item);
+  });
+
+  refreshLabels();
+  refreshArrowNumbers();
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(captureState());
+  const snap = undoStack.pop();
+  restoreState(snap);
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(captureState());
+  const snap = redoStack.pop();
+  restoreState(snap);
+}
+
+function updateUndoRedoButtons() {
+  undoBtn.classList.toggle('disabled', undoStack.length === 0);
+  redoBtn.classList.toggle('disabled', redoStack.length === 0);
+}
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+updateUndoRedoButtons();
+
+/* ──────────────  CLEAR ALL  ────────────── */
+document.getElementById('clearAll').addEventListener('click', () => {
+  if (items.length === 0) return;
+  if (!window.confirm('Effacer toutes les cibles et murs ?')) return;
+  pushUndo();
+  selectItem(null);
+  items.forEach(it => scene.remove(it.mesh));
+  items.length = 0;
+  if (wallMarker) { scene.remove(wallMarker); wallMarker = null; }
+  wallStart = null;
+  if (arrowMarker) { scene.remove(arrowMarker); arrowMarker = null; }
+  arrowStart = null;
+  if (portMarker) { scene.remove(portMarker); portMarker = null; }
+  portStart = null;
+  updateTargetsList();
+});
+
+/* ──────────────  COORD TOOLTIP  ────────────── */
+const coordTip = document.getElementById('coordTip');
+function updateCoordTip(e) {
+  if (!TARGET_TYPES.includes(tool)) {
+    coordTip.classList.remove('show');
+    return;
+  }
+  setMouseFromEvent(e);
+  const gp = getGroundPoint();
+  if (!gp) {
+    coordTip.classList.remove('show');
+    return;
+  }
+  const x = snap(gp.x), z = snap(gp.z);
+  const sb = items.find(it => it.type === 'startbox');
+  let extra = '';
+  let warn = false;
+  if (sb) {
+    const d = Math.hypot(x - sb.mesh.position.x, z - sb.mesh.position.z);
+    const close = d < 1.0;
+    extra = `<div${close ? ' class="warn-line"' : ''}>DIST BOX: ${d.toFixed(1)}M</div>`;
+    if (close) {
+      extra += `<div class="warn-line">⚠ TROP PROCHE</div>`;
+      warn = true;
+    }
+  }
+  coordTip.innerHTML = `<div>X: ${x.toFixed(1)}M &nbsp; Z: ${z.toFixed(1)}M</div>${extra}`;
+  coordTip.classList.toggle('warn', warn);
+  coordTip.classList.add('show');
+  coordTip.style.left = (e.clientX + 16) + 'px';
+  coordTip.style.top = (e.clientY + 16) + 'px';
+}
+renderer.domElement.addEventListener('pointermove', updateCoordTip);
+renderer.domElement.addEventListener('pointerleave', () => coordTip.classList.remove('show'));
+
+/* ──────────────  SCALE RULER  ────────────── */
+const scaleLabelEl = document.getElementById('scaleLabel');
+const _srA = new THREE.Vector3();
+const _srB = new THREE.Vector3();
+function updateScaleRuler() {
+  const w = canvasHost.clientWidth;
+  const h = canvasHost.clientHeight;
+  if (!w || !h) return;
+  _srA.copy(controls.target).project(camera);
+  _srB.set(controls.target.x + 1, controls.target.y, controls.target.z).project(camera);
+  const dx = (_srB.x - _srA.x) * w / 2;
+  const dy = (_srB.y - _srA.y) * h / 2;
+  const pxPerMeter = Math.hypot(dx, dy);
+  if (pxPerMeter < 0.1) return;
+  const meters = 100 / pxPerMeter;
+  let label;
+  if (meters >= 10) label = Math.round(meters) + 'M';
+  else if (meters >= 1) label = meters.toFixed(1) + 'M';
+  else label = Math.round(meters * 100) + 'CM';
+  scaleLabelEl.textContent = label;
+}
+
+/* ──────────────  GRID LABELS  ────────────── */
+const HORIZ_LABELS = [0, 5, 10, 15, 20, 25, 30];
+const VERT_LABELS = [0, 5, 10, 15, 20];
+const gridLabelEls = [];
+HORIZ_LABELS.forEach(m => {
+  const el = document.createElement('div');
+  el.className = 'grid-label';
+  el.textContent = m + 'M';
+  canvasHost.appendChild(el);
+  gridLabelEls.push({ el, world: new THREE.Vector3(-15 + m, 0, 10.5) });
+});
+VERT_LABELS.forEach(m => {
+  const el = document.createElement('div');
+  el.className = 'grid-label';
+  el.textContent = m + 'M';
+  canvasHost.appendChild(el);
+  gridLabelEls.push({ el, world: new THREE.Vector3(-15.5, 0, -10 + m) });
+});
+const _glP = new THREE.Vector3();
+function updateGridLabels() {
+  const w = canvasHost.clientWidth;
+  const h = canvasHost.clientHeight;
+  if (!w || !h) return;
+  gridLabelEls.forEach(({ el, world }) => {
+    _glP.copy(world).project(camera);
+    if (_glP.z > 1 || _glP.z < -1) { el.style.opacity = '0'; return; }
+    const sx = (_glP.x + 1) * w / 2;
+    const sy = (-_glP.y + 1) * h / 2;
+    el.style.left = sx + 'px';
+    el.style.top = sy + 'px';
+    el.style.opacity = (sx > 0 && sx < w && sy > 0 && sy < h) ? '1' : '0';
+  });
+}
+
+/* ──────────────  RENDER LOOP  ────────────── */
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateScaleRuler();
+  updateGridLabels();
+  renderer.render(scene, camera);
+}
+animate();
+updateTargetsList();
+
+/* ──────────────  PDF EXPORT — MATCH BOOK QUALITY  ────────────── */
+function drawDiagram2D() {
+  const W = 900, H = 600;
+  const MARGIN_M = 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // Compute bounding box (world units)
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  const include = (x, z) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (z < minZ) minZ = z;
+    if (z > maxZ) maxZ = z;
+  };
+
+  items.forEach(it => {
+    if (it.type === 'wall' || it.type === 'arrow' || it.type === 'port') {
+      const mx = it.mesh.position.x;
+      const mz = it.mesh.position.z;
+      const theta = -it.mesh.rotation.y;
+      const L = it.mesh.userData.length || 0;
+      const dx = L * Math.cos(theta);
+      const dz = L * Math.sin(theta);
+      include(mx - dx / 2, mz - dz / 2);
+      include(mx + dx / 2, mz + dz / 2);
+    } else if (it.type === 'startbox') {
+      const x = it.mesh.position.x, z = it.mesh.position.z;
+      include(x - 0.75, z - 0.5);
+      include(x + 0.75, z + 0.5);
+    } else {
+      include(it.mesh.position.x, it.mesh.position.z);
+    }
+  });
+
+  if (!isFinite(minX)) { minX = -2; maxX = 2; minZ = -2; maxZ = 2; }
+
+  // Scale to fit (preserves aspect)
+  const contentW = (maxX - minX) + 2 * MARGIN_M;
+  const contentH = (maxZ - minZ) + 2 * MARGIN_M;
+  const scale = Math.min(W / contentW, H / contentH);
+  const padX = (W - contentW * scale) / 2;
+  const padY = (H - contentH * scale) / 2;
+  const projX = (x) => padX + (x - minX + MARGIN_M) * scale;
+  const projY = (z) => padY + (z - minZ + MARGIN_M) * scale;
+
+  const wxStart = Math.floor(minX - MARGIN_M);
+  const wxEnd   = Math.ceil(maxX + MARGIN_M);
+  const wzStart = Math.floor(minZ - MARGIN_M);
+  const wzEnd   = Math.ceil(maxZ + MARGIN_M);
+
+  // Minor grid (1m, #eeeeee)
+  ctx.strokeStyle = '#eeeeee';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  for (let wx = wxStart; wx <= wxEnd; wx++) {
+    const cx = projX(wx);
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+  }
+  for (let wz = wzStart; wz <= wzEnd; wz++) {
+    const cy = projY(wz);
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+  }
+  ctx.stroke();
+
+  // Major grid (5m, #dddddd)
+  ctx.strokeStyle = '#dddddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const major5 = (v) => Math.ceil(v / 5) * 5;
+  for (let wx = major5(wxStart); wx <= wxEnd; wx += 5) {
+    const cx = projX(wx);
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+  }
+  for (let wz = major5(wzStart); wz <= wzEnd; wz += 5) {
+    const cy = projY(wz);
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+  }
+  ctx.stroke();
+
+  // Axis labels (every 5m, gray on edges)
+  ctx.fillStyle = '#aaaaaa';
+  ctx.font = '8px sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'center';
+  for (let wx = major5(wxStart); wx <= wxEnd; wx += 5) {
+    const cx = projX(wx);
+    if (cx >= 10 && cx <= W - 10) ctx.fillText(wx + 'm', cx, 4);
+  }
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  for (let wz = major5(wzStart); wz <= wzEnd; wz += 5) {
+    const cy = projY(wz);
+    if (cy >= 10 && cy <= H - 10) ctx.fillText(wz + 'm', 4, cy);
+  }
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+
+  /* ── Shape draws ── */
+  function labelAbove(px, py, label, dy) {
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, px, py - dy);
+    ctx.restore();
+  }
+
+  function drawPaper(px, py, label, rot) {
+    const w = 35, h = 50;
+    ctx.save();
+    ctx.translate(px, py);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle = '#f5e6c8';
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    // Zone C (dashed)
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(-13, -19, 26, 38);
+    ctx.setLineDash([]);
+    // Zone A (solid)
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-7, -11, 14, 22);
+    ctx.restore();
+    labelAbove(px, py, label, h / 2 + 4);
+  }
+
+  function drawPopper(px, py, label, rot) {
+    const bW = 28, tW = 16, h = 38;
+    ctx.save();
+    ctx.translate(px, py);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle = '#d0d0d0';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-tW / 2, -h / 2);
+    ctx.lineTo( tW / 2, -h / 2);
+    ctx.lineTo( bW / 2,  h / 2);
+    ctx.lineTo(-bW / 2,  h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    labelAbove(px, py, label, h / 2 + 4);
+  }
+
+  function drawPlate(px, py, label, rot) {
+    const R = 14;
+    ctx.save();
+    ctx.translate(px, py);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle = '#d0d0d0';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    labelAbove(px, py, label, R + 4);
+  }
+
+  function drawNoShoot(px, py, label, rot) {
+    const w = 35, h = 50;
+    ctx.save();
+    ctx.translate(px, py);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeStyle = '#cc0000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2); ctx.lineTo( w / 2,  h / 2);
+    ctx.moveTo( w / 2, -h / 2); ctx.lineTo(-w / 2,  h / 2);
+    ctx.stroke();
+    ctx.fillStyle = '#cc0000';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NS', 0, 0);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+    labelAbove(px, py, label, h / 2 + 4);
+  }
+
+  function drawWall(ax, ay, bx, by) {
+    ctx.save();
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPort(ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len, uy = dy / len;
+    const segL = len * 0.4;
+    // Two segments: ax→ax+segL*u and bx-segL*u→bx, gap in the middle
+    const l2x = ax + segL * ux, l2y = ay + segL * uy;
+    const r1x = bx - segL * ux, r1y = by - segL * uy;
+    ctx.save();
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(l2x, l2y);
+    ctx.moveTo(r1x, r1y); ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHardCover(px, py, label, rot) {
+    const w = 35, h = 50;
+    ctx.save();
+    ctx.translate(px, py);
+    if (rot) ctx.rotate(rot);
+    ctx.fillStyle = '#c8d4f0';
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeStyle = '#3a3aff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2); ctx.lineTo( w / 2,  h / 2);
+    ctx.moveTo( w / 2, -h / 2); ctx.lineTo(-w / 2,  h / 2);
+    ctx.stroke();
+    ctx.fillStyle = '#3a3aff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('HC', 0, 0);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+    labelAbove(px, py, label, h / 2 + 4);
+  }
+
+  function drawBarrel(px, py) {
+    ctx.save();
+    ctx.fillStyle = '#8a6a3a';
+    ctx.beginPath();
+    ctx.arc(px, py, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.strokeStyle = '#5a3a1a';
+    ctx.lineWidth = 1;
+    [8, 5, 2].forEach(r => {
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.fillStyle = '#000';
+    ctx.font = '7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PROP', px, py + 22);
+    ctx.restore();
+  }
+
+  function drawArrow(ax, ay, bx, by, num) {
+    ctx.save();
+    ctx.strokeStyle = '#2a8a4a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrowhead
+    const angle = Math.atan2(by - ay, bx - ax);
+    const hL = 10, hW = 0.5;
+    ctx.fillStyle = '#2a8a4a';
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - hL * Math.cos(angle - hW), by - hL * Math.sin(angle - hW));
+    ctx.lineTo(bx - hL * Math.cos(angle + hW), by - hL * Math.sin(angle + hW));
+    ctx.closePath();
+    ctx.fill();
+    // Sequence circle at midpoint
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(num), mx, my);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  function drawStartBox(px, py) {
+    const w = 1.5 * scale, h = 1.0 * scale;
+    ctx.save();
+    ctx.fillStyle = 'rgba(204, 0, 0, 0.05)';
+    ctx.fillRect(px - w / 2, py - h / 2, w, h);
+    ctx.strokeStyle = '#cc0000';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(px - w / 2, py - h / 2, w, h);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#cc0000';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('START', px, py);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  // Draw order: walls + ports (background) → startbox → arrows → barrels → targets + hardcovers (foreground)
+  items.forEach(it => {
+    if (it.type !== 'wall' && it.type !== 'port') return;
+    const mx = it.mesh.position.x, mz = it.mesh.position.z;
+    const theta = -it.mesh.rotation.y;
+    const L = it.mesh.userData.length || 0;
+    const dx = L * Math.cos(theta), dz = L * Math.sin(theta);
+    const ax = projX(mx - dx / 2), ay = projY(mz - dz / 2);
+    const bx = projX(mx + dx / 2), by = projY(mz + dz / 2);
+    if (it.type === 'wall') drawWall(ax, ay, bx, by);
+    else                    drawPort(ax, ay, bx, by);
+  });
+
+  items.forEach(it => {
+    if (it.type !== 'startbox') return;
+    drawStartBox(projX(it.mesh.position.x), projY(it.mesh.position.z));
+  });
+
+  let arrowN = 0;
+  items.forEach(it => {
+    if (it.type !== 'arrow') return;
+    arrowN++;
+    const mx = it.mesh.position.x, mz = it.mesh.position.z;
+    const theta = -it.mesh.rotation.y;
+    const L = it.mesh.userData.length || 0;
+    const dx = L * Math.cos(theta), dz = L * Math.sin(theta);
+    drawArrow(projX(mx - dx / 2), projY(mz - dz / 2), projX(mx + dx / 2), projY(mz + dz / 2), arrowN);
+  });
+
+  items.forEach(it => {
+    if (it.type !== 'barrel') return;
+    drawBarrel(projX(it.mesh.position.x), projY(it.mesh.position.z));
+  });
+
+  let tn = 0, hcn = 0;
+  items.forEach(it => {
+    const px = projX(it.mesh.position.x);
+    const py = projY(it.mesh.position.z);
+    const rot = it.mesh.rotation.y || 0;
+    if (TARGET_TYPES.includes(it.type)) {
+      tn++;
+      const label = 'T' + tn;
+      if      (it.type === 'paper')   drawPaper(px, py, label, rot);
+      else if (it.type === 'popper')  drawPopper(px, py, label, rot);
+      else if (it.type === 'plate')   drawPlate(px, py, label, rot);
+      else if (it.type === 'noshoot') drawNoShoot(px, py, label, rot);
+    } else if (it.type === 'hardcover') {
+      hcn++;
+      drawHardCover(px, py, 'HC' + hcn, rot);
+    }
+  });
+
+  // Outer frame
+  ctx.strokeStyle = '#999999';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+  return canvas.toDataURL('image/png');
+}
+
+function pdfFooter(pdf, PW, PH) {
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(7);
+  pdf.setTextColor(150);
+  pdf.text('Généré avec OpMind Stage Creator — opmind.fr', PW / 2, PH - 6, { align: 'center' });
+  pdf.setTextColor(0);
+}
+
+document.getElementById('exportPdf').addEventListener('click', () => {
+  const name = (document.getElementById('stageName').value || 'STAGE SANS NOM').trim();
+  const data = {
+    name,
+    procedure:    document.getElementById('f-procedure').value.trim(),
+    startPos:     document.getElementById('f-startpos').value.trim(),
+    startTime:    document.getElementById('f-starttime').value.trim(),
+    gunReady:     document.getElementById('f-gunready').value.trim(),
+    shooterReady: document.getElementById('f-shooterready').value.trim(),
+  };
+
+  const targets    = items.filter(it => TARGET_TYPES.includes(it.type));
+  const papers     = items.filter(it => it.type === 'paper');
+  const totalShots = targets.reduce((s, t) => s + (t.requiredHits || 0), 0);
+  const points     = papers.length * 5;
+  const partime    = parseFloat(document.getElementById('f-partime').value) || 30;
+  const hfMax      = partime > 0 ? points / partime : 0;
+  const cls        = classifyShots(totalShots).label;
+
+  const diagram = drawDiagram2D();
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const PW = pdf.internal.pageSize.getWidth();   // 297
+  const PH = pdf.internal.pageSize.getHeight();  // 210
+  const M  = 12;
+
+  /* ═══ PAGE 1 — STAGE SHEET ═══ */
+
+  // Header
+  pdf.setTextColor(0);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(14);
+  pdf.text('OPMIND', M, 15);
+
+  pdf.setFontSize(16);
+  pdf.text(data.name.toUpperCase(), PW / 2, 15, { align: 'center' });
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.text('STAGE 01', PW - M, 15, { align: 'right' });
+
+  pdf.setDrawColor(0);
+  pdf.setLineWidth(0.5);
+  pdf.line(M, 20, PW - M, 20);
+
+  // Metrics band
+  pdf.setFillColor(26, 26, 26);
+  pdf.rect(M, 24, PW - 2 * M, 10, 'F');
+  pdf.setTextColor(255);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  const colW = (PW - 2 * M) / 4;
+  const metricsTexts = [
+    `COUPS: ${totalShots}`,
+    `TYPE: ${cls}`,
+    `POINTS: ${points}`,
+    `HF MAX: ${hfMax.toFixed(2)}`,
+  ];
+  for (let i = 0; i < 4; i++) {
+    pdf.text(metricsTexts[i], M + colW * i + colW / 2, 30.5, { align: 'center' });
+  }
+  pdf.setTextColor(0);
+
+  // Content area
+  const top    = 40;
+  const bottom = PH - 12;
+
+  // Diagram (60% left)
+  const diagW = (PW - 2 * M) * 0.60;
+  const diagH = diagW * (600 / 900);
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(M, top, diagW, diagH, 'F');
+  pdf.addImage(diagram, 'PNG', M, top, diagW, diagH);
+  pdf.setDrawColor(180);
+  pdf.setLineWidth(0.5);
+  pdf.rect(M, top, diagW, diagH);
+
+  // Right column
+  const rightX = M + diagW + 6;
+  const rightW = (PW - M) - rightX;
+  let ry = top;
+
+  // PROCÉDURE
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(7);
+  pdf.setTextColor(136, 136, 136);
+  pdf.text('PROCÉDURE', rightX, ry);
+  ry += 3.5;
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(0);
+  const procLines = pdf.splitTextToSize(data.procedure || '—', rightW);
+  pdf.text(procLines, rightX, ry);
+  ry += procLines.length * 4 + 4;
+
+  // Metadata fields
+  const meta = [
+    ['POSITION INITIALE', data.startPos],
+    ['TEMPS DÉPART',      data.startTime],
+    ['ARME PRÊTE',        data.gunReady],
+    ['TIREUR PRÊT',       data.shooterReady],
+  ];
+  for (const [label, value] of meta) {
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7);
+    pdf.setTextColor(136, 136, 136);
+    pdf.text(label, rightX, ry);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(0);
+    const lines = pdf.splitTextToSize(value || '—', rightW);
+    pdf.text(lines, rightX, ry + 3.5);
+    ry += 6 + (lines.length - 1) * 3.5;
+  }
+
+  // Separator
+  ry += 1;
+  pdf.setDrawColor(220);
+  pdf.setLineWidth(0.3);
+  pdf.line(rightX, ry, rightX + rightW, ry);
+  ry += 4;
+
+  // CIBLES
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(7);
+  pdf.setTextColor(136, 136, 136);
+  pdf.text('CIBLES', rightX, ry);
+  ry += 4;
+
+  if (targets.length === 0) {
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(180);
+    pdf.text('—', rightX, ry);
+  } else {
+    pdf.setFontSize(8);
+    targets.forEach((t, idx) => {
+      if (ry > bottom - 8) return;
+      if (idx % 2 === 1) {
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(rightX, ry - 3.5, rightW, 5, 'F');
+      }
+      pdf.setTextColor(232, 74, 58);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('T' + (idx + 1), rightX + 1, ry);
+      pdf.setTextColor(0);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(TYPE_LABEL[t.type], rightX + 12, ry);
+      pdf.text(`${t.requiredHits} COUPS`, rightX + rightW - 1, ry, { align: 'right' });
+      ry += 5;
+    });
+  }
+
+  pdfFooter(pdf, PW, PH);
+
+  /* ═══ PAGE 2 — SCORING TABLE (if >0 papers) ═══ */
+
+  if (papers.length > 0) {
+    pdf.addPage();
+    pdf.setTextColor(0);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.text('OPMIND  ·  TABLEAU DE SCORING', M, 15);
+    pdf.setFontSize(11);
+    pdf.text(data.name.toUpperCase(), PW - M, 15, { align: 'right' });
+    pdf.setDrawColor(0);
+    pdf.setLineWidth(0.5);
+    pdf.line(M, 20, PW - M, 20);
+
+    const usableW = PW - 2 * M;
+    const tireurW = 50;
+    const totalW  = 24;
+    const hfW     = 20;
+    const remainW = usableW - tireurW - totalW - hfW;
+    const paperW  = remainW / papers.length;
+
+    let y2 = 28;
+    const rowH = 9;
+
+    // Header row
+    pdf.setFillColor(26, 26, 26);
+    pdf.rect(M, y2, usableW, rowH, 'F');
+    pdf.setTextColor(255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.text('TIREUR', M + tireurW / 2, y2 + 5.8, { align: 'center' });
+    let cx = M + tireurW;
+    for (let i = 0; i < papers.length; i++) {
+      pdf.text(`T${i + 1}`, cx + paperW / 2, y2 + 5.8, { align: 'center' });
+      cx += paperW;
+    }
+    pdf.text('TOTAL', cx + totalW / 2, y2 + 5.8, { align: 'center' });
+    cx += totalW;
+    pdf.text('HF', cx + hfW / 2, y2 + 5.8, { align: 'center' });
+    y2 += rowH;
+
+    // 15 empty rows
+    pdf.setTextColor(0);
+    pdf.setDrawColor(210);
+    pdf.setLineWidth(0.2);
+    for (let r = 0; r < 15; r++) {
+      if (r % 2 === 1) {
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(M, y2, usableW, rowH, 'F');
+      }
+      pdf.line(M, y2 + rowH, M + usableW, y2 + rowH);
+      let bx = M;
+      pdf.line(bx, y2, bx, y2 + rowH);
+      bx += tireurW;
+      pdf.line(bx, y2, bx, y2 + rowH);
+      for (let i = 0; i < papers.length; i++) {
+        bx += paperW;
+        pdf.line(bx, y2, bx, y2 + rowH);
+      }
+      bx += totalW;
+      pdf.line(bx, y2, bx, y2 + rowH);
+      bx += hfW;
+      pdf.line(bx, y2, bx, y2 + rowH);
+      y2 += rowH;
+    }
+
+    pdfFooter(pdf, PW, PH);
+  }
+
+  // Filename: [nom-du-stage]-stage.pdf
+  const safe = data.name.toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_]+/g, '')
+    .replace(/^-+|-+$/g, '') || 'stage';
+  const filename = `${safe}-stage.pdf`;
+  pdf.save(filename);
+  showSignup(filename);
+});
+
+/* ──────────────  SAVE / LOAD / SHARE / AUTOSAVE  ────────────── */
+const AUTOSAVE_KEY = 'opmind-stage-autosave';
+const ioBanner = document.getElementById('ioBanner');
+let bannerTimeout = null;
+
+function hideBanner() {
+  ioBanner.className = 'io-banner';
+  ioBanner.innerHTML = '';
+  if (bannerTimeout) { clearTimeout(bannerTimeout); bannerTimeout = null; }
+}
+
+function showBanner(message, type, duration, actions) {
+  if (bannerTimeout) { clearTimeout(bannerTimeout); bannerTimeout = null; }
+  ioBanner.className = 'io-banner show' + (type ? ' ' + type : '');
+  let html = `<span>${message}</span>`;
+  if (actions && actions.length) {
+    actions.forEach((a, i) => {
+      html += `<button data-action-i="${i}"${a.primary ? ' class="primary"' : ''}>${a.label}</button>`;
+    });
+  }
+  ioBanner.innerHTML = html;
+  if (actions && actions.length) {
+    ioBanner.querySelectorAll('button').forEach(btn => {
+      const i = parseInt(btn.dataset.actionI, 10);
+      btn.addEventListener('click', () => {
+        actions[i].onClick();
+        hideBanner();
+      });
+    });
+  } else if (duration > 0) {
+    bannerTimeout = setTimeout(hideBanner, duration);
+  }
+}
+
+function serializeStage() {
+  const objects = items.map(it => {
+    if (TARGET_TYPES.includes(it.type)) {
+      return {
+        type: it.type,
+        x: it.mesh.position.x,
+        z: it.mesh.position.z,
+        rotation: it.mesh.rotation.y,
+        requiredHits: it.requiredHits,
+        label: '',
+      };
+    } else if (it.type === 'wall' || it.type === 'arrow' || it.type === 'port') {
+      const mx = it.mesh.position.x;
+      const mz = it.mesh.position.z;
+      const theta = -it.mesh.rotation.y;
+      const L = it.mesh.userData.length || 0;
+      const dx = L * Math.cos(theta);
+      const dz = L * Math.sin(theta);
+      const o = {
+        type: it.type,
+        ax: mx - dx / 2, az: mz - dz / 2,
+        bx: mx + dx / 2, bz: mz + dz / 2,
+      };
+      if (it.type === 'wall' || it.type === 'port') {
+        o.scaleY = it.mesh.scale.y;
+        o.scaleZ = it.mesh.scale.z;
+      }
+      return o;
+    } else if (it.type === 'hardcover' || it.type === 'barrel') {
+      return {
+        type: it.type,
+        x: it.mesh.position.x,
+        z: it.mesh.position.z,
+        rotation: it.mesh.rotation.y,
+      };
+    } else if (it.type === 'startbox') {
+      return { type: 'startbox', x: it.mesh.position.x, z: it.mesh.position.z };
+    }
+    return null;
+  }).filter(Boolean);
+
+  // Attach proper target labels (T1, T2…)
+  let tn = 0;
+  objects.forEach(o => {
+    if (TARGET_TYPES.includes(o.type)) {
+      tn++;
+      o.label = 'T' + tn;
+    }
+  });
+
+  return {
+    version: 1,
+    name: (document.getElementById('stageName').value || 'STAGE SANS NOM').trim(),
+    metadata: {
+      shots:        parseInt(document.getElementById('f-shots').value, 10) || 0,
+      targets:      document.getElementById('f-counted').value || '',
+      procedure:    document.getElementById('f-procedure').value || '',
+      startPosition:document.getElementById('f-startpos').value || '',
+      timeStart:    document.getElementById('f-starttime').value || '',
+      gunReady:     document.getElementById('f-gunready').value || '',
+      shooterReady: document.getElementById('f-shooterready').value || '',
+      parTime:      parseFloat(document.getElementById('f-partime').value) || 30,
+    },
+    objects,
+  };
+}
+
+function deserializeStage(json) {
+  if (!json || json.version !== 1) throw new Error('Invalid version');
+  if (!Array.isArray(json.objects)) throw new Error('Invalid objects');
+
+  document.getElementById('stageName').value = (json.name || 'STAGE SANS NOM');
+  const md = json.metadata || {};
+  document.getElementById('f-counted').value      = md.targets      || '';
+  document.getElementById('f-procedure').value    = md.procedure    || '';
+  document.getElementById('f-startpos').value     = md.startPosition|| '';
+  document.getElementById('f-starttime').value    = md.timeStart    || '';
+  document.getElementById('f-gunready').value     = md.gunReady     || '';
+  document.getElementById('f-shooterready').value = md.shooterReady || '';
+  document.getElementById('f-partime').value      = (md.parTime != null ? md.parTime : 30);
+
+  // Convert save format into the internal snapshot shape consumed by restoreState
+  const internal = json.objects.map(o => {
+    if (TARGET_TYPES.includes(o.type)) {
+      return {
+        type: o.type,
+        x: Number(o.x) || 0,
+        z: Number(o.z) || 0,
+        rotation: Number(o.rotation) || 0,
+        requiredHits: (typeof o.requiredHits === 'number') ? o.requiredHits : (DEFAULT_HITS[o.type] ?? 1),
+      };
+    } else if (o.type === 'wall' || o.type === 'port') {
+      const dx = (o.bx - o.ax), dz = (o.bz - o.az);
+      const length = Math.hypot(dx, dz);
+      const angle = Math.atan2(dz, dx);
+      return {
+        type: o.type,
+        x: (o.ax + o.bx) / 2,
+        z: (o.az + o.bz) / 2,
+        rotation: -angle,
+        length,
+        scaleY: typeof o.scaleY === 'number' ? o.scaleY : 1,
+        scaleZ: typeof o.scaleZ === 'number' ? o.scaleZ : 1,
+      };
+    } else if (o.type === 'arrow') {
+      return { type: 'arrow', ax: Number(o.ax), az: Number(o.az), bx: Number(o.bx), bz: Number(o.bz), rotation: 0 };
+    } else if (o.type === 'hardcover' || o.type === 'barrel') {
+      return {
+        type: o.type,
+        x: Number(o.x) || 0,
+        z: Number(o.z) || 0,
+        rotation: Number(o.rotation) || 0,
+      };
+    } else if (o.type === 'startbox') {
+      return { type: 'startbox', x: Number(o.x) || 0, z: Number(o.z) || 0, rotation: 0 };
+    }
+    return null;
+  }).filter(Boolean);
+
+  restoreState(JSON.stringify(internal));
+  // restoreState clears undo/redo? No, it pushes nothing. Reset stacks for clean slate after load.
+  undoStack.length = 0;
+  redoStack.length = 0;
+  updateUndoRedoButtons();
+  updateMetrics();
+}
+
+function downloadJSON(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function safeStageName(name) {
+  return (name || 'stage').replace(/[^a-z0-9\-_]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'stage';
+}
+
+const fileMenuBtn = document.getElementById('fileMenuBtn');
+const fileMenu = document.getElementById('fileMenu');
+fileMenuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  fileMenu.classList.toggle('open');
+});
+fileMenu.addEventListener('click', (e) => {
+  if (e.target.closest('.file-menu-item')) fileMenu.classList.remove('open');
+});
+document.addEventListener('click', (e) => {
+  if (!fileMenu.classList.contains('open')) return;
+  if (e.target === fileMenuBtn) return;
+  if (!fileMenu.contains(e.target)) fileMenu.classList.remove('open');
+});
+
+/* ──────────────  TEMPLATES  ────────────── */
+const TEMPLATES = [
+  {
+    name: 'COULOIR CLASSIQUE',
+    type: 'SHORT',
+    shotsLabel: '8 coups · 4 cibles',
+    description: '4 cibles papier en ligne, 2 murs latéraux, box au fond.',
+    metadata: {
+      procedure: 'Au signal sonore, engager toutes les cibles depuis la box de départ.',
+      startPos: 'Debout, arme holstérée, mains relâchées',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée, holster',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '4 IPSC',
+      parTime: 15,
+    },
+    objects: [
+      { type: 'paper', x: -4.5, z: 3 },
+      { type: 'paper', x: -1.5, z: 3 },
+      { type: 'paper', x:  1.5, z: 3 },
+      { type: 'paper', x:  4.5, z: 3 },
+      { type: 'wall', ax: -6, az: 0, bx: -6, bz: 6 },
+      { type: 'wall', ax:  6, az: 0, bx:  6, bz: 6 },
+      { type: 'startbox', x: 0, z: 8 },
+    ],
+  },
+  {
+    name: 'L-SHAPE',
+    type: 'MEDIUM',
+    shotsLabel: '13 coups · 9 cibles',
+    description: 'Stage en L : 6 papier, 2 no-shoot, 1 popper. Transition obligatoire.',
+    metadata: {
+      procedure: 'Engager depuis la position A, transition vers B, engager les cibles restantes.',
+      startPos: 'Debout, arme holstérée, mains relâchées',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '6 IPSC, 2 NS, 1 popper',
+      parTime: 25,
+    },
+    objects: [
+      { type: 'paper',   x: -4, z: -4 },
+      { type: 'paper',   x: -2, z: -4 },
+      { type: 'paper',   x:  0, z: -4 },
+      { type: 'noshoot', x: -3, z: -3 },
+      { type: 'noshoot', x: -1, z: -3 },
+      { type: 'paper',   x:  8, z:  0 },
+      { type: 'paper',   x:  8, z:  2 },
+      { type: 'paper',   x:  8, z:  4 },
+      { type: 'popper',  x:  9, z:  6 },
+      { type: 'wall', ax: -5, az: -5, bx: -5, bz:  5 },
+      { type: 'wall', ax: -5, az:  5, bx: 11, bz:  5 },
+      { type: 'wall', ax: 11, az:  5, bx: 11, bz: -2 },
+      { type: 'wall', ax: 11, az: -2, bx:  2, bz: -2 },
+      { type: 'wall', ax:  2, az: -2, bx:  2, bz: -5 },
+      { type: 'wall', ax:  2, az: -5, bx: -5, bz: -5 },
+      { type: 'arrow', ax: -2, az: 3, bx: 6, bz: 3 },
+      { type: 'startbox', x: -2, z: 4 },
+    ],
+  },
+  {
+    name: 'CLASSIFIEUR C-03-08',
+    type: 'SHORT',
+    shotsLabel: '6 coups · 3 cibles',
+    description: '3 cibles papier à 7m, espacées 1m, sans murs.',
+    metadata: {
+      procedure: '6 coups, 3 cibles, 2 coups par cible. Au signal sonore depuis la box.',
+      startPos: 'Debout, arme holstérée, mains relâchées',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '3 IPSC',
+      parTime: 8,
+    },
+    objects: [
+      { type: 'paper', x: -1, z: -3 },
+      { type: 'paper', x:  0, z: -3 },
+      { type: 'paper', x:  1, z: -3 },
+      { type: 'startbox', x: 0, z: 4 },
+    ],
+  },
+  {
+    name: 'DÉFENSE DE POSITION',
+    type: 'MEDIUM',
+    shotsLabel: '14 coups · 11 cibles',
+    description: '6 papier + 3 no-shoot + 2 poppers en 3 positions.',
+    metadata: {
+      procedure: 'Engager depuis chaque position dans l\'ordre imposé. 2 tirs par cible papier, 1 tir par popper.',
+      startPos: 'Debout, arme holstérée',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '6 IPSC, 3 NS, 2 poppers',
+      parTime: 28,
+    },
+    objects: [
+      { type: 'paper',   x: -7, z: -3 },
+      { type: 'paper',   x: -5, z: -3 },
+      { type: 'noshoot', x: -6, z: -2 },
+      { type: 'paper',   x: -1, z: -3 },
+      { type: 'paper',   x:  1, z: -3 },
+      { type: 'noshoot', x:  0, z: -2 },
+      { type: 'popper',  x: -1, z: -5 },
+      { type: 'paper',   x:  5, z: -3 },
+      { type: 'paper',   x:  7, z: -3 },
+      { type: 'noshoot', x:  6, z: -2 },
+      { type: 'popper',  x:  7, z: -5 },
+      { type: 'wall', ax: -8, az:  0, bx: -4, bz:  0 },
+      { type: 'wall', ax: -2, az:  0, bx:  2, bz:  0 },
+      { type: 'wall', ax:  4, az:  0, bx:  8, bz:  0 },
+      { type: 'arrow', ax: -6, az:  2, bx:  0, bz:  2 },
+      { type: 'arrow', ax:  0, az:  2, bx:  6, bz:  2 },
+      { type: 'startbox', x: -6, z: 4 },
+    ],
+  },
+  {
+    name: 'SPEED SHOOT',
+    type: 'SPEED',
+    shotsLabel: '6 coups · 6 plates',
+    description: '6 steel plates en arc de cercle à 7m, sans murs.',
+    metadata: {
+      procedure: 'Au signal sonore, abattre les 6 plates dans n\'importe quel ordre.',
+      startPos: 'Debout, arme en main, bras le long du corps',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité dégagée',
+      shooterReady: 'Bras le long du corps',
+      targets: '6 plates',
+      parTime: 5,
+    },
+    objects: [
+      { type: 'plate', x: -5, z: -2 },
+      { type: 'plate', x: -3, z: -3 },
+      { type: 'plate', x: -1, z: -3.5 },
+      { type: 'plate', x:  1, z: -3.5 },
+      { type: 'plate', x:  3, z: -3 },
+      { type: 'plate', x:  5, z: -2 },
+      { type: 'startbox', x: 0, z: 4 },
+    ],
+  },
+  {
+    name: 'BARRICADE',
+    type: 'MEDIUM',
+    shotsLabel: '16 coups · 8 cibles',
+    description: '4 papier + 4 no-shoot autour d\'une barricade centrale.',
+    metadata: {
+      procedure: 'Tirer 4 cibles côté gauche depuis la position gauche, 4 côté droit depuis la position droite.',
+      startPos: 'Debout, arme holstérée',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '4 IPSC, 4 NS',
+      parTime: 20,
+    },
+    objects: [
+      { type: 'paper',   x: -6, z: -4 },
+      { type: 'paper',   x: -2, z: -4 },
+      { type: 'noshoot', x: -4, z: -4 },
+      { type: 'noshoot', x: -5, z: -2 },
+      { type: 'paper',   x:  2, z: -4 },
+      { type: 'paper',   x:  6, z: -4 },
+      { type: 'noshoot', x:  4, z: -4 },
+      { type: 'noshoot', x:  5, z: -2 },
+      { type: 'wall', ax: 0,   az: 1, bx: 0,   bz: -2 },
+      { type: 'wall', ax: 0.5, az: 1, bx: 0.5, bz: -2 },
+      { type: 'arrow', ax: -3, az: 4, bx: 3, bz: 4 },
+      { type: 'startbox', x: -3, z: 4 },
+    ],
+  },
+  {
+    name: 'LONG COURSE',
+    type: 'LONG',
+    shotsLabel: '21 coups · 17 cibles',
+    description: '8 papier + 4 no-shoot + 3 poppers + 2 plates en 3 zones.',
+    metadata: {
+      procedure: 'Stage à 3 positions. Engager dans l\'ordre imposé. Reload obligatoire après la position B.',
+      startPos: 'Debout, arme holstérée',
+      timeStart: 'Au signal sonore',
+      gunReady: 'Chargée, sécurité engagée',
+      shooterReady: 'Mains naturelles le long du corps',
+      targets: '8 IPSC, 4 NS, 3 poppers, 2 plates',
+      parTime: 35,
+    },
+    objects: [
+      { type: 'paper',   x: -8, z: -3 },
+      { type: 'paper',   x: -7, z: -5 },
+      { type: 'paper',   x: -5, z: -3 },
+      { type: 'noshoot', x: -6, z: -3 },
+      { type: 'popper',  x: -8, z: -6 },
+      { type: 'paper',   x: -1, z: -5 },
+      { type: 'paper',   x:  1, z: -5 },
+      { type: 'paper',   x:  0, z: -7 },
+      { type: 'noshoot', x: -1, z: -4 },
+      { type: 'noshoot', x:  1, z: -4 },
+      { type: 'plate',   x: -2, z: -8 },
+      { type: 'plate',   x:  2, z: -8 },
+      { type: 'popper',  x:  0, z: -9 },
+      { type: 'paper',   x:  6, z: -3 },
+      { type: 'paper',   x:  8, z: -3 },
+      { type: 'noshoot', x:  7, z: -3 },
+      { type: 'popper',  x:  7, z: -5 },
+      { type: 'wall', ax: -4, az: -1, bx: -4, bz: -8 },
+      { type: 'wall', ax:  4, az: -1, bx:  4, bz: -8 },
+      { type: 'arrow', ax: -7, az: 2, bx: 0, bz: 2 },
+      { type: 'arrow', ax:  0, az: 2, bx: 7, bz: 2 },
+      { type: 'startbox', x: -7, z: 4 },
+    ],
+  },
+  {
+    name: 'STAGE VIDE',
+    empty: true,
+    description: 'PARTIR DE ZÉRO',
+    metadata: {
+      procedure: '',
+      startPos: '',
+      timeStart: '',
+      gunReady: '',
+      shooterReady: '',
+      targets: '',
+      parTime: 30,
+    },
+    objects: [],
+  },
+];
+
+const templatesModal     = document.getElementById('templatesModal');
+const templatesGrid      = document.getElementById('templatesGrid');
+const templatesCloseBtn  = document.getElementById('templatesCloseBtn');
+const templatesBtn       = document.getElementById('templatesBtn');
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function renderTemplates() {
+  templatesGrid.innerHTML = '';
+  TEMPLATES.forEach((t) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'template-card' + (t.empty ? ' empty' : '');
+    if (t.empty) {
+      card.innerHTML = `<div class="t-name">${escapeHtml(t.description)}</div>`;
+    } else {
+      card.innerHTML = `
+        <div class="t-name">${escapeHtml(t.name)}</div>
+        <span class="t-badge ${t.type.toLowerCase()}">${escapeHtml(t.type)}</span>
+        <div class="t-stats">${escapeHtml(t.shotsLabel)}</div>
+        <div class="t-desc">${escapeHtml(t.description)}</div>
+      `;
+    }
+    card.addEventListener('click', () => {
+      applyTemplate(t);
+      closeTemplatesModal();
+    });
+    templatesGrid.appendChild(card);
+  });
+}
+
+function applyTemplate(t) {
+  pushUndo();
+
+  // Clear scene
+  selectItem(null);
+  items.forEach(it => scene.remove(it.mesh));
+  items.length = 0;
+  if (wallMarker)  { scene.remove(wallMarker);  wallMarker  = null; }
+  wallStart = null;
+  if (arrowMarker) { scene.remove(arrowMarker); arrowMarker = null; }
+  arrowStart = null;
+  if (portMarker)  { scene.remove(portMarker);  portMarker  = null; }
+  portStart = null;
+
+  // Metadata
+  document.getElementById('stageName').value = t.empty ? 'STAGE SANS NOM' : t.name;
+  const md = t.metadata || {};
+  document.getElementById('f-procedure').value    = md.procedure    || '';
+  document.getElementById('f-startpos').value     = md.startPos     || '';
+  document.getElementById('f-starttime').value    = md.timeStart    || '';
+  document.getElementById('f-gunready').value     = md.gunReady     || '';
+  document.getElementById('f-shooterready').value = md.shooterReady || '';
+  document.getElementById('f-counted').value      = md.targets      || '';
+  document.getElementById('f-partime').value      = (md.parTime != null ? md.parTime : 30);
+
+  // Build objects via existing makeXxx
+  (t.objects || []).forEach(o => {
+    if (TARGET_TYPES.includes(o.type)) {
+      const item = placeTarget(o.type, o.x, o.z);
+      if (item) {
+        if (typeof o.requiredHits === 'number') item.requiredHits = o.requiredHits;
+        if (o.rotation) item.mesh.rotation.y = o.rotation;
+      }
+    } else if (o.type === 'wall') {
+      const mesh = makeWall(o.ax, o.az, o.bx, o.bz);
+      if (mesh) {
+        scene.add(mesh);
+        items.push({ type: 'wall', mesh });
+      }
+    } else if (o.type === 'arrow') {
+      const mesh = makeArrow(o.ax, o.az, o.bx, o.bz);
+      if (mesh) {
+        scene.add(mesh);
+        items.push({ type: 'arrow', mesh, label: null });
+      }
+    } else if (o.type === 'startbox') {
+      const mesh = makeStartBox();
+      mesh.position.set(o.x, 0, o.z);
+      scene.add(mesh);
+      items.push({ type: 'startbox', mesh });
+    }
+  });
+
+  refreshLabels();
+  refreshArrowNumbers();
+  updateMetrics();
+}
+
+function openTemplatesModal() {
+  templatesModal.classList.add('open');
+}
+function closeTemplatesModal() {
+  templatesModal.classList.remove('open');
+}
+
+templatesBtn.addEventListener('click', openTemplatesModal);
+templatesCloseBtn.addEventListener('click', closeTemplatesModal);
+templatesModal.addEventListener('click', (e) => {
+  if (e.target === templatesModal || e.target.classList.contains('modal-overlay')) {
+    closeTemplatesModal();
+  }
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && templatesModal.classList.contains('open')) {
+    closeTemplatesModal();
+  }
+});
+
+renderTemplates();
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const data = serializeStage();
+  downloadJSON(`${safeStageName(data.name)}.opmind.json`, data);
+});
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  document.getElementById('loadFile').click();
+});
+
+document.getElementById('loadFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    deserializeStage(json);
+    showBanner(`STAGE CHARGÉ — ${json.name || ''}`, 'success', 3000);
+  } catch (err) {
+    showBanner('FICHIER INVALIDE', 'error', 3000);
+  }
+  e.target.value = '';
+});
+
+document.getElementById('shareBtn').addEventListener('click', async () => {
+  try {
+    const data = serializeStage();
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(data));
+    const url = window.location.origin + window.location.pathname + '?stage=' + compressed;
+    await navigator.clipboard.writeText(url);
+    showBanner('URL COPIÉE ✓', 'success', 3000);
+  } catch (err) {
+    showBanner('IMPOSSIBLE DE COPIER', 'error', 3000);
+  }
+});
+
+function autosave() {
+  if (items.length === 0) return; // skip empty stages
+  try {
+    const data = serializeStage();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+      stage: data,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch (err) { /* quota / serialization error — ignore */ }
+}
+setInterval(autosave, 30000);
+
+function tryLoadFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const stage = params.get('stage');
+  if (!stage) return false;
+  try {
+    const decoded = LZString.decompressFromEncodedURIComponent(stage);
+    if (!decoded) throw new Error('decompress failed');
+    const json = JSON.parse(decoded);
+    deserializeStage(json);
+    showBanner(`STAGE CHARGÉ — ${json.name || ''}`, 'success', 3000);
+  } catch (err) {
+    showBanner('URL INVALIDE', 'error', 3000);
+  }
+  return true; // ?stage= was present (even if invalid)
+}
+
+function checkAutosaveRestore() {
+  let saved;
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return;
+    saved = JSON.parse(raw);
+    if (!saved || !saved.stage) throw new Error('bad shape');
+  } catch (err) {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    return;
+  }
+  const name = (saved.stage.name || 'STAGE').toUpperCase();
+  let dateStr = '';
+  try { dateStr = new Date(saved.savedAt).toLocaleString('fr-FR'); } catch (e) { dateStr = ''; }
+  showBanner(
+    `REPRISE AUTOMATIQUE — ${name}${dateStr ? ' · ' + dateStr : ''}`,
+    '',
+    0,
+    [
+      { label: 'IGNORER',  onClick: () => { localStorage.removeItem(AUTOSAVE_KEY); } },
+      { label: 'RESTAURER', primary: true, onClick: () => {
+        try {
+          deserializeStage(saved.stage);
+          showBanner(`STAGE CHARGÉ — ${saved.stage.name || ''}`, 'success', 3000);
+        } catch (err) {
+          showBanner('AUTOSAVE INVALIDE', 'error', 3000);
+          localStorage.removeItem(AUTOSAVE_KEY);
+        }
+      } },
+    ]
+  );
+}
+
+// Startup: URL wins over autosave
+if (new URLSearchParams(window.location.search).has('stage')) {
+  tryLoadFromURL();
+} else {
+  checkAutosaveRestore();
+}
+
+function showSignup(filename) {
+  const exp = document.getElementById('exportResult');
+  exp.classList.add('show');
+  exp.innerHTML = `
+    <span class="filename">EXPORTÉ — ${filename}</span>
+    <span class="sep">|</span>
+    <span>NOTIFIÉ AU LANCEMENT :</span>
+    <input type="email" id="su-email" placeholder="ton@email.fr" autocomplete="email">
+    <button class="send" id="su-submit">ENVOYER</button>
+  `;
+  const email = exp.querySelector('#su-email');
+  const btn = exp.querySelector('#su-submit');
+  btn.addEventListener('click', async () => {
+    const v = email.value.trim();
+    if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { email.focus(); return; }
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = '…';
+    try {
+      const res = await fetch('https://iqhbxzhpndaeivrzdzyy.supabase.co/functions/v1/waitlist-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: v }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      exp.innerHTML = `
+        <span class="filename">EXPORTÉ — ${filename}</span>
+        <span class="sep">|</span>
+        <span class="done">NOTÉ. À BIENTÔT.</span>
+      `;
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+}
+</script>
+</body>
+</html>

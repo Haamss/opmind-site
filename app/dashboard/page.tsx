@@ -2774,18 +2774,22 @@ function ShootersView({ shooters }: { shooters: ShooterRow[] }) {
         setFeedback("Session expirée.");
         return;
       }
-      const { data: prof } = await sb
-        .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
-      if (!prof?.id) {
+      const { data: prof } = await sb.rpc("find_profile_by_email", {
+        p_email: email,
+      });
+      // RPC SECURITY DEFINER gated instructeur → tableau (0 ou 1 ligne)
+      const match = (
+        prof as
+          | { id: string; first_name: string | null; last_name: string | null }[]
+          | null
+      )?.[0];
+      if (!match?.id) {
         setFeedback("Aucun tireur trouvé avec cet email.");
         return;
       }
       const { error } = await sb.from("assignments").insert({
         instructor_id: session.user.id,
-        shooter_id: prof.id,
+        shooter_id: match.id,
       });
       if (error) {
         setFeedback("Impossible d'ajouter ce tireur.");

@@ -302,6 +302,9 @@ function SessionCreator() {
                   { v: "dry_fire", l: "Dry Fire" },
                   { v: "speciales", l: "Spéciales" },
                   { v: "vector", l: "Vector" },
+                  { v: "shot_timer", l: "Shot Timer" },
+                  { v: "stages", l: "Stages" },
+                  { v: "degrade", l: "Dégradé" },
                 ]}
               />
             </Field>

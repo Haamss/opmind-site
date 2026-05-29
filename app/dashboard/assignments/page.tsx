@@ -204,6 +204,7 @@ export default function AssignmentsPage() {
                 <Th>Module</Th>
                 <Th>Deadline</Th>
                 <Th>Statut</Th>
+                <Th>Séance</Th>
                 <Th>Créée le</Th>
               </tr>
             </thead>
@@ -246,6 +247,16 @@ export default function AssignmentsPage() {
                     <td className="px-4 py-3 font-mono text-xs text-[#aaa]">{formatDate(a.deadline)}</td>
                     <td className="px-4 py-3">
                       <AssignmentStatusBadge status={a.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {a.module_session_id ? (
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#00E5FF]">
+                          <span className="inline-block h-2 w-2" style={{ background: "#00E5FF" }} />
+                          Liée
+                        </span>
+                      ) : (
+                        <span className="text-[#444]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-[#888]">{formatDate(a.created_at)}</td>
                   </tr>

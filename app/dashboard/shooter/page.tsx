@@ -16,9 +16,11 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import {
   fetchAssignments,
-  fetchSessions,
+  fetchModuleSessionById,
+  fetchUnifiedSessions,
   formatDate,
   isPro,
+  type ModuleSessionRow,
 } from "@/components/dashboard/data";
 import { moduleColor, moduleLabel } from "@/components/dashboard/modules";
 import { ProgressionChart } from "@/components/dashboard/ProgressionChart";
@@ -65,6 +67,23 @@ function ShooterDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [linkedSession, setLinkedSession] = useState<ModuleSessionRow | null>(
+    null
+  );
+  const [linkedLoading, setLinkedLoading] = useState(false);
+
+  const openLinkedSession = useCallback(async (sessionId: string) => {
+    setLinkedLoading(true);
+    setLinkedSession(null);
+    try {
+      const row = await fetchModuleSessionById(sessionId);
+      setLinkedSession(row);
+    } catch {
+      setLinkedSession(null);
+    } finally {
+      setLinkedLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -101,7 +120,7 @@ function ShooterDetail() {
         if (prof?.pseudo) pseudo = prof.pseudo;
       }
       const [ss, aa] = await Promise.all([
-        fetchSessions([id]),
+        fetchUnifiedSessions([shooterRow as Shooter]),
         fetchAssignments([id]),
       ]);
       setShooter(shooterRow as Shooter);
@@ -120,24 +139,38 @@ function ShooterDetail() {
   }, [load]);
 
   const stats = useMemo(() => {
-    const scored = sessions
-      .map((s) => s.normalized_score)
-      .filter((v): v is number => typeof v === "number");
-    const avgScore =
-      scored.length > 0 ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
-    const bestScore = scored.length > 0 ? Math.max(...scored) : null;
+    // Meilleure séance = max normalized_score (pas une moyenne) + son module.
+    let bestSession: ManualSession | null = null;
+    for (const s of sessions) {
+      if (
+        typeof s.normalized_score === "number" &&
+        (bestSession === null ||
+          s.normalized_score > (bestSession.normalized_score as number))
+      ) {
+        bestSession = s;
+      }
+    }
+    const bestScore = bestSession ? bestSession.normalized_score : null;
+    const bestModule = bestSession?.module ?? null;
 
-    const acc = sessions
-      .map((s) => s.accuracy)
-      .filter((v): v is number => typeof v === "number");
-    const avgAccuracy =
-      acc.length > 0 ? acc.reduce((a, b) => a + b, 0) / acc.length : null;
+    // Headline = DERNIÈRE séance (un seul module). Jamais de moyenne inter-modules.
+    // sessions triées par date desc (fetchUnifiedSessions) → [0] = dernière.
+    const last = sessions[0] ?? null;
+    const lastScore =
+      last && typeof last.normalized_score === "number"
+        ? last.normalized_score
+        : null;
+    const lastAccuracy =
+      last && typeof last.accuracy === "number" ? last.accuracy : null;
+    const lastModule = last?.module ?? null;
 
     return {
-      avgScore,
+      lastScore,
+      lastAccuracy,
+      lastModule,
       bestScore,
+      bestModule,
       count: sessions.length,
-      avgAccuracy,
     };
   }, [sessions]);
 
@@ -227,21 +260,22 @@ function ShooterDetail() {
 
           {/* STATS */}
           <div className="mb-10 grid gap-3 md:grid-cols-4">
+            <KpiTile label="Sessions" value={stats.count} />
             <KpiTile
-              label="Score moyen"
-              value={stats.avgScore !== null ? stats.avgScore.toFixed(1) : "—"}
-              hint="0 — 100"
+              label="Dernière séance"
+              value={stats.lastScore !== null ? stats.lastScore.toFixed(1) : "—"}
+              hint={stats.lastModule ? moduleLabel(stats.lastModule) : undefined}
             />
             <KpiTile
               label="Meilleur score"
               value={stats.bestScore !== null ? stats.bestScore.toFixed(1) : "—"}
+              hint={stats.bestModule ? moduleLabel(stats.bestModule) : undefined}
             />
-            <KpiTile label="Sessions" value={stats.count} />
             <KpiTile
-              label="Précision moyenne"
+              label="Précision (dernière)"
               value={
-                stats.avgAccuracy !== null
-                  ? `${(stats.avgAccuracy * 100).toFixed(0)}%`
+                stats.lastAccuracy !== null
+                  ? `${(stats.lastAccuracy * 100).toFixed(0)}%`
                   : "—"
               }
             />
@@ -471,6 +505,18 @@ function ShooterDetail() {
                           ) : (
                             <span className="font-mono text-[10px] text-[#444]">—</span>
                           )}
+                          {a.status === "completed" && a.module_session_id && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openLinkedSession(a.module_session_id!)
+                              }
+                              className="ml-2 inline-flex items-center gap-1.5 border border-[#1A1A1A] bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#00E5FF] hover:text-[#00E5FF]"
+                              aria-label={`Ouvrir la séance liée — ${a.title}`}
+                            >
+                              Séance ▸
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -486,8 +532,105 @@ function ShooterDetail() {
             onClose={() => setModalOpen(false)}
             onCreated={() => load()}
           />
+
+          <LinkedSessionModal
+            open={linkedLoading || linkedSession !== null}
+            loading={linkedLoading}
+            session={linkedSession}
+            onClose={() => setLinkedSession(null)}
+          />
         </>
       )}
+    </div>
+  );
+}
+
+function LinkedSessionModal({
+  open,
+  loading,
+  session,
+  onClose,
+}: {
+  open: boolean;
+  loading: boolean;
+  session: ModuleSessionRow | null;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6">
+      <div className="w-full max-w-md border border-[#1A1A1A] bg-[#0A0A0A]">
+        <div className="flex items-center justify-between border-b border-[#1A1A1A] px-6 py-4">
+          <h3 className="font-mono text-base font-bold uppercase tracking-[0.18em] text-white">
+            Séance liée
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-[#888] transition-colors hover:text-white"
+          >
+            Fermer
+          </button>
+        </div>
+        <div className="px-6 py-5">
+          {loading ? (
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-[#888]">
+              Chargement…
+            </p>
+          ) : !session ? (
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-[#E84040]">
+              Séance introuvable
+            </p>
+          ) : (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <SessionField label="Date" value={formatDate(session.date)} />
+              <SessionField
+                label="Module"
+                value={moduleLabel(session.source_module)}
+              />
+              <SessionField
+                label="Score"
+                value={
+                  typeof session.normalized_score === "number"
+                    ? session.normalized_score.toFixed(1)
+                    : "—"
+                }
+              />
+              <SessionField
+                label="Hit Factor"
+                value={
+                  typeof session.hit_factor === "number"
+                    ? session.hit_factor.toFixed(2)
+                    : "—"
+                }
+              />
+              <SessionField
+                label="Coups"
+                value={session.total_shots != null ? String(session.total_shots) : "—"}
+              />
+              <SessionField
+                label="Précision"
+                value={
+                  typeof session.accuracy === "number"
+                    ? `${(session.accuracy * 100).toFixed(0)}%`
+                    : "—"
+                }
+              />
+            </dl>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#666]">
+        {label}
+      </dt>
+      <dd className="mt-1 font-mono text-sm tabular-nums text-white">{value}</dd>
     </div>
   );
 }

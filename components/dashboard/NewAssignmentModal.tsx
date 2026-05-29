@@ -22,6 +22,9 @@ const MODULE_KINDS: { v: ModuleKind; l: string }[] = [
   { v: "dry_fire", l: "Dry Fire" },
   { v: "speciales", l: "Spéciales" },
   { v: "vector", l: "Vector" },
+  { v: "shot_timer", l: "Shot Timer" },
+  { v: "stages", l: "Stages" },
+  { v: "degrade", l: "Dégradé" },
 ];
 
 export function NewAssignmentModal({ shooterId, open, onClose, onCreated }: Props) {

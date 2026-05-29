@@ -4,7 +4,14 @@ export type AssignmentStatus = "pending" | "completed" | "overdue" | "draft";
 
 export type AssignmentType = "module" | "carnet" | "free";
 
-export type ModuleKind = "basique" | "dry_fire" | "speciales" | "vector";
+export type ModuleKind =
+  | "basique"
+  | "dry_fire"
+  | "speciales"
+  | "vector"
+  | "shot_timer"
+  | "stages"
+  | "degrade";
 
 export interface Shooter {
   id: string;
@@ -29,6 +36,16 @@ export interface ManualSession {
   accuracy: number | null;
   notes: string | null;
   created_at: string;
+}
+
+export type SessionSource = "manual" | "module";
+
+/** Vue unifiée : manual_sessions (clé instructor_shooter_id) +
+ *  module_sessions (clé user_id remappée vers instructor_shooter_id). */
+export interface UnifiedSession extends ManualSession {
+  source: SessionSource;
+  hit_factor: number | null;
+  module_session_id: string | null;
 }
 
 export type TargetKind = "TSV" | "Précision" | "Plaques" | "Autre";
@@ -60,6 +77,7 @@ export interface Assignment {
   deadline: string | null;
   status: AssignmentStatus;
   completed_at: string | null;
+  module_session_id: string | null;
   created_at: string;
   content: SessionContent | null;
 }

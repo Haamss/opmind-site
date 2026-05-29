@@ -12,8 +12,8 @@ import {
 } from "recharts";
 import {
   fetchAssignments,
-  fetchSessions,
   fetchShooters,
+  fetchUnifiedSessions,
   joinShooterStats,
 } from "@/components/dashboard/data";
 import {
@@ -55,7 +55,7 @@ export default function AnalyticsPage() {
         const list = await fetchShooters();
         const ids = list.map((s) => s.id);
         const [ss, aa] = await Promise.all([
-          fetchSessions(ids),
+          fetchUnifiedSessions(list),
           fetchAssignments(ids),
         ]);
         if (cancelled) return;

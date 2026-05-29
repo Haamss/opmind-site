@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "../../../lib/supabase";
+import { fetchUnifiedSessions } from "../../../components/dashboard/data";
+import { moduleLabel } from "../../../components/dashboard/modules";
+import type {
+  Shooter,
+  UnifiedSession,
+} from "../../../components/dashboard/types";
 
 /* ──────────────  Tokens  ────────────── */
 
@@ -56,28 +62,8 @@ const OBJECTIFS_POOL: { label: string; current: number; target: number }[] = [
 
 /* ──────────────  Types  ────────────── */
 
-type InstructorShooterRow = {
-  id: string;
-  instructor_id: string;
-  shooter_id?: string | null;
-  name: string;
-  unit?: string | null;
-  grade?: string | null;
-  linked_at?: string | null;
-  status?: string | null;
-  specialite?: string | null;
-  instructor_notes?: string | null;
-};
-
-type ManualSessionRow = {
-  id: string;
-  instructor_shooter_id: string;
-  date?: string | null;
-  normalized_score?: number | null;
-  total_shots?: number | null;
-  accuracy?: number | null;
-  module?: string | null;
-};
+// Types locaux InstructorShooterRow / ManualSessionRow supprimés :
+// source unique = Shooter / UnifiedSession (components/dashboard/types).
 
 type ProfileLite = {
   first_name?: string | null;
@@ -87,16 +73,16 @@ type ProfileLite = {
 };
 
 type DerivedShooter = {
-  row: InstructorShooterRow;
-  sessions: ManualSessionRow[];
+  row: Shooter;
+  sessions: UnifiedSession[];
   level: "A" | "B" | "C" | "D";
-  hf: number;
+  lastScore: number;
+  scoreDelta: number;
   accuracy: number;
-  draw: number;
-  sessionsCount: number;
-  hfDelta: number;
   accDelta: number;
-  drawDelta: number;
+  lastModule: string | null;
+  lastHitFactor: number | null;
+  sessionsCount: number;
   sessionsDelta: number;
   activity30d: boolean[];
   city: string;
@@ -129,12 +115,6 @@ function deriveLevelFromScore(score: number): "A" | "B" | "C" | "D" {
   return "D";
 }
 
-function avg(nums: number[]): number {
-  const valid = nums.filter((n) => Number.isFinite(n));
-  if (valid.length === 0) return 0;
-  return valid.reduce((s, n) => s + n, 0) / valid.length;
-}
-
 const CITY_POOL = [
   "Marseille",
   "Lyon",
@@ -158,38 +138,40 @@ const CLUB_POOL = [
 ];
 
 function deriveShooter(
-  row: InstructorShooterRow,
-  sessions: ManualSessionRow[]
+  row: Shooter,
+  sessions: UnifiedSession[]
 ): DerivedShooter {
   const seed = row.id + row.name;
   const ordered = [...sessions].sort(
     (a, b) =>
       new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
   );
-  const halfIdx = Math.max(1, Math.floor(ordered.length / 2));
-  const recent = ordered.slice(halfIdx);
-  const older = ordered.slice(0, halfIdx);
 
-  const recentScore = avg(recent.map((s) => Number(s.normalized_score) || 0));
-  const olderScore = avg(older.map((s) => Number(s.normalized_score) || 0));
-  const recentAcc = avg(recent.map((s) => (Number(s.accuracy) || 0) * 100));
-  const olderAcc = avg(older.map((s) => (Number(s.accuracy) || 0) * 100));
-  const recentShots = avg(recent.map((s) => Number(s.total_shots) || 0));
-  const olderShots = avg(older.map((s) => Number(s.total_shots) || 0));
+  // Headline = DERNIÈRE séance (un seul module). Score = normalized_score réel,
+  // HF = hit_factor réel (jamais normalized/10). Jamais de moyenne inter-modules.
+  const last = ordered[ordered.length - 1] ?? null;
+  const lastModule = last?.module ?? null;
+  const lastScore =
+    last && typeof last.normalized_score === "number" ? last.normalized_score : 0;
+  const lastAcc =
+    last && typeof last.accuracy === "number" ? last.accuracy * 100 : 0;
+  const lastHitFactor =
+    last && typeof last.hit_factor === "number" ? last.hit_factor : null;
 
-  const allScores = ordered.map((s) => Number(s.normalized_score) || 0);
-  const meanScore = avg(allScores);
-  const meanAcc = avg(ordered.map((s) => (Number(s.accuracy) || 0) * 100));
-
-  const hf = meanScore > 0 ? meanScore / 10 : 0;
-  const recentHf = recentScore > 0 ? recentScore / 10 : 0;
-  const olderHf = olderScore > 0 ? olderScore / 10 : 0;
-  const hfDelta = olderHf > 0 ? recentHf - olderHf : 0;
-  const accDelta = olderAcc > 0 ? Math.round(recentAcc - olderAcc) : 0;
-  const drawSeed = (hash(seed) % 80) / 100;
-  const draw = 1.0 + drawSeed;
-  const drawDelta = -((hash(seed + "draw") % 20) / 100);
-  const sessionsDelta = Math.round(recentShots - olderShots);
+  // Deltas = dernière vs précédente séance DU MÊME MODULE (segmenté, pas d'agrégat).
+  const sameModule = ordered.filter((s) => (s.module ?? null) === lastModule);
+  const prev = sameModule.length >= 2 ? sameModule[sameModule.length - 2] : null;
+  const prevScore =
+    prev && typeof prev.normalized_score === "number" ? prev.normalized_score : 0;
+  const prevAcc =
+    prev && typeof prev.accuracy === "number" ? prev.accuracy * 100 : 0;
+  const scoreDelta = prevScore > 0 ? Math.round(lastScore - prevScore) : 0;
+  const accDelta = prevAcc > 0 ? Math.round(lastAcc - prevAcc) : 0;
+  // Volume récent = comptage 30j (un nombre, pas une moyenne).
+  const cutoff = Date.now() - 30 * 86400000;
+  const sessionsDelta = sessions.filter(
+    (s) => new Date(s.date || 0).getTime() >= cutoff
+  ).length;
 
   // Build 30-day activity bitmap deterministic per shooter
   const sessionDays = new Set<string>();
@@ -220,8 +202,8 @@ function deriveShooter(
     ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000)
     : 999;
   if (daysSinceLast > 14) flag = "contact";
-  else if (hfDelta < -0.3) flag = "stagne";
-  else if (hfDelta > 0.5) flag = "rapide";
+  else if (scoreDelta < -3) flag = "stagne";
+  else if (scoreDelta > 5) flag = "rapide";
 
   // Next coaching deterministic — half of shooters have one
   let nextCoaching: Date | null = null;
@@ -235,14 +217,14 @@ function deriveShooter(
   return {
     row,
     sessions,
-    level: deriveLevelFromScore(meanScore),
-    hf: Math.round(hf * 100) / 100,
-    accuracy: Math.round(meanAcc),
-    draw: Math.round(draw * 100) / 100,
-    sessionsCount: sessions.length,
-    hfDelta: Math.round(hfDelta * 100) / 100,
+    level: deriveLevelFromScore(lastScore),
+    lastScore,
+    scoreDelta,
+    accuracy: Math.round(lastAcc),
     accDelta,
-    drawDelta: Math.round(drawDelta * 100) / 100,
+    lastModule,
+    lastHitFactor,
+    sessionsCount: sessions.length,
     sessionsDelta,
     activity30d,
     city: pickFrom(CITY_POOL, seed + "city"),
@@ -335,32 +317,20 @@ export default function MesTireursPage() {
         const { data: rows } = await sb
           .from("instructor_shooters")
           .select(
-            "id,instructor_id,shooter_id,name,unit,grade,linked_at,status,specialite,instructor_notes"
+            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at"
           )
           .eq("instructor_id", userId)
           .order("linked_at", { ascending: false });
 
-        const list = (rows as InstructorShooterRow[] | null) || [];
-        const ids = list.map((r) => r.id);
-        let sessionsByShooter: Record<string, ManualSessionRow[]> = {};
-        if (ids.length > 0) {
-          const { data: sess } = await sb
-            .from("manual_sessions")
-            .select(
-              "id,instructor_shooter_id,date,normalized_score,total_shots,accuracy,module"
-            )
-            .in("instructor_shooter_id", ids);
-          if (Array.isArray(sess)) {
-            sessionsByShooter = (sess as ManualSessionRow[]).reduce<
-              Record<string, ManualSessionRow[]>
-            >((acc, s) => {
-              const k = s.instructor_shooter_id;
-              if (!acc[k]) acc[k] = [];
-              acc[k].push(s);
-              return acc;
-            }, {});
-          }
-        }
+        const list = (rows as Shooter[] | null) || [];
+        // Source unifiée : manual_sessions + module_sessions (activité réelle app).
+        const unified = await fetchUnifiedSessions(list);
+        const sessionsByShooter = unified.reduce<
+          Record<string, UnifiedSession[]>
+        >((acc, s) => {
+          (acc[s.instructor_shooter_id] ||= []).push(s);
+          return acc;
+        }, {});
 
         const derived = list.map((row) =>
           deriveShooter(row, sessionsByShooter[row.id] || [])
@@ -448,13 +418,12 @@ export default function MesTireursPage() {
   );
   const hoursCoaching = Math.round((totalShotsAll / 100) * 10) / 10;
   const hoursThisMonth = Math.round((hoursCoaching / 3) * 10) / 10;
-  const classHF =
+  // Vraie moyenne sur l'échelle 0–100 (dernière séance de chaque tireur).
+  // L'arrondi d'affichage est géré par toFixed(1).
+  const classScore =
     activeShooters.length > 0
-      ? Math.round(
-          (activeShooters.reduce((sum, s) => sum + s.hf, 0) /
-            activeShooters.length) *
-            100
-        ) / 100
+      ? activeShooters.reduce((sum, s) => sum + s.lastScore, 0) /
+        activeShooters.length
       : 0;
   const classAcc =
     activeShooters.length > 0
@@ -467,7 +436,7 @@ export default function MesTireursPage() {
 
   /* ────  Leaderboard  ──── */
   const leaderboard = useMemo(
-    () => [...shooters].sort((a, b) => b.hf - a.hf).slice(0, 5),
+    () => [...shooters].sort((a, b) => b.lastScore - a.lastScore).slice(0, 5),
     [shooters]
   );
 
@@ -502,7 +471,7 @@ export default function MesTireursPage() {
         label,
         value:
           s.flag === "stagne"
-            ? `HF ${s.hf.toFixed(2)}`
+            ? `Score ${Math.round(s.lastScore)}`
             : `${daysSince} j`,
         color,
         at: s.lastActivity,
@@ -561,7 +530,7 @@ export default function MesTireursPage() {
             shootersDelta={2}
             hoursCoaching={hoursCoaching}
             hoursThisMonth={hoursThisMonth}
-            classHF={classHF}
+            classScore={classScore}
             classAcc={classAcc}
             sessionsPerWeek={sessionsPerWeek}
           />
@@ -822,7 +791,7 @@ function StatsStrip({
   shootersDelta,
   hoursCoaching,
   hoursThisMonth,
-  classHF,
+  classScore,
   classAcc,
   sessionsPerWeek,
 }: {
@@ -830,7 +799,7 @@ function StatsStrip({
   shootersDelta: number;
   hoursCoaching: number;
   hoursThisMonth: number;
-  classHF: number;
+  classScore: number;
   classAcc: number;
   sessionsPerWeek: number;
 }) {
@@ -850,9 +819,9 @@ function StatsStrip({
       delta: { dir: "up", text: `${hoursThisMonth} h ce mois` },
     },
     {
-      label: "HF moyen classe",
-      value: classHF > 0 ? classHF.toFixed(2) : "—",
-      delta: { dir: "up", text: "+0.32 / 30j" },
+      label: "Score moyen classe (dernière séance)",
+      value: classScore > 0 ? classScore.toFixed(1) : "—",
+      delta: { dir: "flat", text: "modules confondus" },
     },
     {
       label: "Accuracy moy.",
@@ -1214,7 +1183,15 @@ function IconButton({
 }
 
 function CardStats({ s }: { s: DerivedShooter }) {
-  const stats = [
+  const stats: {
+    label: string;
+    value: string;
+    delta: number;
+    unit: string;
+    precision?: number;
+    lowerIsBetter?: boolean;
+    note?: string;
+  }[] = [
     {
       label: "Sessions",
       value: String(s.sessionsCount),
@@ -1222,25 +1199,23 @@ function CardStats({ s }: { s: DerivedShooter }) {
       unit: "",
     },
     {
-      label: "HF moy.",
-      value: s.hf > 0 ? s.hf.toFixed(2) : "—",
-      delta: s.hfDelta,
-      unit: "",
-      precision: 2,
+      label: "Dernière (score)",
+      value: s.lastScore > 0 ? s.lastScore.toFixed(1) : "—",
+      delta: s.scoreDelta,
+      unit: "pts",
+      note: s.lastModule ? moduleLabel(s.lastModule) : undefined,
     },
     {
-      label: "Accuracy",
+      label: "Accuracy (dernière)",
       value: s.accuracy > 0 ? `${s.accuracy}%` : "—",
       delta: s.accDelta,
       unit: "pts",
     },
     {
-      label: "Draw",
-      value: s.draw > 0 ? `${s.draw.toFixed(2)}s` : "—",
-      delta: s.drawDelta,
-      unit: "s",
-      precision: 2,
-      lowerIsBetter: true,
+      label: "Hit Factor",
+      value: s.lastHitFactor != null ? s.lastHitFactor.toFixed(2) : "—",
+      delta: 0,
+      unit: "",
     },
   ];
   return (
@@ -1296,6 +1271,20 @@ function CardStats({ s }: { s: DerivedShooter }) {
             >
               {st.value}
             </span>
+            {st.note && (
+              <span
+                style={{
+                  fontFamily: FONT_RAJ,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: INK_DIM,
+                }}
+              >
+                {st.note}
+              </span>
+            )}
             <span
               style={{
                 fontFamily: FONT_RAJ,
@@ -1615,7 +1604,7 @@ function ShooterListRow({ s }: { s: DerivedShooter }) {
         {LEVEL_LABELS[s.level]}
       </span>
       <span style={{ fontFamily: FONT_RAJ, fontSize: 14, fontWeight: 700, color: INK }}>
-        HF {s.hf > 0 ? s.hf.toFixed(2) : "—"}
+        Score {s.lastScore > 0 ? s.lastScore.toFixed(1) : "—"}
       </span>
       <span style={{ fontFamily: FONT_RAJ, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: INK_DIM, textTransform: "uppercase" }}>
         {relTime(s.lastActivity)}
@@ -1675,7 +1664,7 @@ function LeaderboardPanel({
         padding: 16,
       }}
     >
-      <PanelTitle title="Leaderboard · HF 30j" />
+      <PanelTitle title="Leaderboard · Score (dernière séance)" />
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {entries.length === 0 ? (
           <span
@@ -1756,7 +1745,7 @@ function LeaderboardPanel({
                     color: ACCENT_BRIGHT,
                   }}
                 >
-                  {e.hf > 0 ? e.hf.toFixed(2) : "—"}
+                  {e.lastScore > 0 ? e.lastScore.toFixed(1) : "—"}
                 </span>
               </div>
             );

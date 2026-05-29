@@ -33,6 +33,10 @@
   border-radius: 0 !important;
 }
 
+html, body {
+  height: 100%;
+}
+
 html {
   scroll-behavior: smooth;
   background: #000;

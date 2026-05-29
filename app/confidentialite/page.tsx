@@ -1,334 +1,351 @@
 import type { Metadata } from "next";
-import { LegalLayout, LegalSection } from "@/components/LegalLayout";
+import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
+
+/* ──────────────  Tokens  ────────────── */
+
+const BG = "#0a0a0c";
+const ACCENT = "#7A0000";
+const INK = "#ebe5d2";
+const DIM = "rgba(235,229,210,0.45)";
+const DIM_STRONG = "rgba(235,229,210,0.65)";
+const LINE = "rgba(235,229,210,0.08)";
+
+const FONT_DISPLAY = "Antonio, 'Barlow Condensed', sans-serif";
+const FONT_MONO = "'JetBrains Mono', 'Rajdhani', monospace";
+const FONT_BODY = "'Barlow', system-ui, sans-serif";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité — OpMind",
   description:
-    "Politique de confidentialité et de traitement des données personnelles d'OpMind, conforme au RGPD.",
+    "Politique de confidentialité OpMind — données collectées, finalités, durée de conservation, droits RGPD.",
 };
+
+/* ──────────────  Page  ────────────── */
 
 export default function ConfidentialitePage() {
   return (
-    <LegalLayout
-      tag="RGPD"
-      title="Politique de confidentialité"
-      updatedAt="18 mai 2026"
+    <main
+      style={{
+        background: BG,
+        color: INK,
+        fontFamily: FONT_BODY,
+        minHeight: "100vh",
+        width: "100%",
+        overflowX: "hidden",
+      }}
     >
-      <LegalSection title="Préambule">
-        <p>
-          OpMind est une application d&apos;entraînement au tir sportif
-          éditée par <strong>Hamid Bride</strong>, auto-entrepreneur en
-          France. La présente politique décrit comment sont collectées,
-          utilisées, conservées et protégées les données personnelles des
-          utilisateurs du site <strong>opmind.fr</strong> et de
-          l&apos;application mobile OpMind.
-        </p>
-        <p>
-          Ce document est conforme au{" "}
-          <strong>
-            Règlement (UE) 2016/679 du Parlement européen et du Conseil
-          </strong>{" "}
-          du 27 avril 2016 (Règlement Général sur la Protection des Données —
-          RGPD) et à la loi française n°78-17 du 6 janvier 1978 dite
-          &laquo; Informatique et Libertés &raquo; modifiée.
-        </p>
-      </LegalSection>
+      <TopBar />
 
-      <LegalSection title="Responsable du traitement">
-        <p>
-          Le responsable du traitement des données personnelles est{" "}
-          <strong>Hamid Bride</strong>, auto-entrepreneur, joignable à
-          l&apos;adresse{" "}
-          <a href="mailto:contact@opmind.fr">contact@opmind.fr</a>.
-        </p>
-        <p>
-          OpMind n&apos;est pas tenue de désigner un Délégué à la Protection
-          des Données (DPO) compte tenu de sa taille et de la nature des
-          traitements, mais reste à la disposition des utilisateurs pour
-          toute demande relative à leurs données.
-        </p>
-      </LegalSection>
+      <article
+        style={{
+          maxWidth: 720,
+          margin: "0 auto",
+          padding: "120px 32px",
+        }}
+      >
+        <PageTitle>Politique de confidentialité</PageTitle>
 
-      <LegalSection title="Données collectées">
-        <h3>À l&apos;inscription</h3>
-        <ul>
-          <li>Adresse email</li>
-          <li>
-            Mot de passe (stocké de manière chiffrée et irréversible —
-            jamais en clair)
-          </li>
-          <li>Nom ou pseudonyme choisi par l&apos;utilisateur</li>
-        </ul>
+        <LegalSection title="Données collectées">
+          <p style={paragraphStyle}>
+            Lors de la création d&apos;un compte OpMind, nous collectons les
+            informations suivantes :
+          </p>
+          <ul style={listStyle}>
+            <li style={listItemStyle}>Adresse email</li>
+            <li style={listItemStyle}>Prénom</li>
+            <li style={listItemStyle}>Nom</li>
+            <li style={listItemStyle}>Rôle (tireur sportif, instructeur, responsable de club)</li>
+          </ul>
+          <p style={paragraphStyle}>
+            Aucune donnée sensible (santé, opinions, etc.) n&apos;est collectée.
+          </p>
+        </LegalSection>
 
-        <h3>Pendant l&apos;utilisation de l&apos;application</h3>
-        <ul>
-          <li>
-            Données d&apos;entraînement : séances réalisées, temps,
-            chronométrages (splits), zones d&apos;impact, scores calculés
-            (Hit Factor, accuracy)
-          </li>
-          <li>
-            Photos optionnelles attachées aux séances (stockées
-            chiffrées)
-          </li>
-          <li>
-            Profil tireur : discipline pratiquée, division, arsenal déclaré
-          </li>
-          <li>
-            Données issues du shot timer (BLE matériel ou détection audio
-            via micro)
-          </li>
-          <li>Données issues du module Performance (sommeil, stress, fatigue, motivation) — saisies volontairement</li>
-        </ul>
+        <LegalSection title="Finalité du traitement">
+          <p style={paragraphStyle}>
+            Les données collectées sont utilisées pour :
+          </p>
+          <ul style={listStyle}>
+            <li style={listItemStyle}>
+              Te donner accès à l&apos;application OpMind
+            </li>
+            <li style={listItemStyle}>
+              Communiquer sur le lancement, les évolutions et les invitations à
+              la bêta
+            </li>
+          </ul>
+        </LegalSection>
 
-        <h3>Données techniques</h3>
-        <ul>
-          <li>
-            Adresse IP (conservée dans les logs serveur pour une durée
-            maximale de 12 mois)
-          </li>
-          <li>Type d&apos;appareil, version du système d&apos;exploitation, version de l&apos;application</li>
-          <li>Cookies techniques d&apos;authentification (Supabase)</li>
-        </ul>
+        <LegalSection title="Base légale">
+          <p style={paragraphStyle}>
+            Le traitement repose sur ton{" "}
+            <strong style={strongStyle}>consentement explicite</strong>
+            {" "}— RGPD article 6.1.a. Tu peux le retirer à tout moment.
+          </p>
+        </LegalSection>
 
-        <h3>Inscription à la liste d&apos;attente</h3>
-        <ul>
-          <li>Adresse email uniquement, fournie volontairement</li>
-        </ul>
-      </LegalSection>
+        <LegalSection title="Durée de conservation">
+          <p style={paragraphStyle}>
+            Les données sont conservées jusqu&apos;à la suppression de ton
+            compte ou après <strong style={strongStyle}>3 ans d&apos;inactivité</strong>,
+            selon la première éventualité.
+          </p>
+        </LegalSection>
 
-      <LegalSection title="Finalités et bases légales">
-        <p>
-          Les données collectées sont traitées pour les finalités suivantes,
-          chacune reposant sur une base légale précise :
-        </p>
-        <ul>
-          <li>
-            <strong>Fourniture du service</strong> (création de compte,
-            synchronisation des données, historique d&apos;entraînement) —{" "}
-            <em>exécution du contrat</em> (article 6.1.b RGPD)
-          </li>
-          <li>
-            <strong>Analyse de performance personnelle</strong> et
-            statistiques individuelles — <em>exécution du contrat</em>
-          </li>
-          <li>
-            <strong>Sécurité du compte</strong> et prévention de la fraude —{" "}
-            <em>intérêt légitime</em> (article 6.1.f)
-          </li>
-          <li>
-            <strong>Communication relative à la bêta</strong> et
-            informations produit pour la waitlist —{" "}
-            <em>consentement</em> (article 6.1.a), révocable à tout moment
-          </li>
-          <li>
-            <strong>Amélioration du service</strong> via analyse agrégée et
-            anonymisée — <em>intérêt légitime</em>
-          </li>
-        </ul>
-      </LegalSection>
-
-      <LegalSection title="Durées de conservation">
-        <ul>
-          <li>
-            <strong>Compte actif</strong> : pendant toute la durée
-            d&apos;utilisation du service
-          </li>
-          <li>
-            <strong>Compte supprimé</strong> : suppression complète et
-            définitive sous 30 jours
-          </li>
-          <li>
-            <strong>Logs techniques et de sécurité</strong> : 12 mois maximum
-          </li>
-          <li>
-            <strong>Inscription waitlist</strong> : jusqu&apos;à la sortie
-            de la version 1.0 ou désinscription par l&apos;utilisateur
-          </li>
-          <li>
-            <strong>Sauvegardes</strong> : 30 jours après suppression du
-            compte principal
-          </li>
-        </ul>
-      </LegalSection>
-
-      <LegalSection title="Destinataires et sous-traitants">
-        <p>
-          Les données personnelles sont accessibles uniquement à Hamid Bride
-          (éditeur d&apos;OpMind) et au sous-traitant technique suivant,
-          encadré par un accord de traitement conforme à l&apos;article 28
-          du RGPD :
-        </p>
-        <ul>
-          <li>
-            <strong>Supabase Inc.</strong> — hébergement de la base de
-            données et de l&apos;authentification. Serveurs situés dans
-            l&apos;Union européenne.{" "}
-            <a
-              href="https://supabase.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Politique de confidentialité Supabase
+        <LegalSection title="Tes droits">
+          <p style={paragraphStyle}>
+            Conformément au RGPD, tu disposes des droits suivants sur tes
+            données :
+          </p>
+          <ul style={listStyle}>
+            <li style={listItemStyle}>Droit d&apos;accès</li>
+            <li style={listItemStyle}>Droit de rectification</li>
+            <li style={listItemStyle}>Droit à l&apos;effacement (suppression)</li>
+            <li style={listItemStyle}>Droit à la portabilité</li>
+            <li style={listItemStyle}>Droit d&apos;opposition</li>
+          </ul>
+          <p style={paragraphStyle}>
+            Pour exercer ces droits, écris à{" "}
+            <a href="mailto:opmind.strat@gmail.com" style={linkStyle}>
+              opmind.strat@gmail.com
             </a>
-            .
-          </li>
-          <li>
-            <strong>GitHub Inc.</strong> — hébergement du site
-            <strong> opmind.fr</strong> via GitHub Pages (site statique, sans
-            collecte de données utilisateur côté serveur).
-          </li>
-        </ul>
-        <p>
-          <strong>
-            Aucune donnée n&apos;est revendue, partagée à des annonceurs,
-            ni utilisée à des fins publicitaires.
-          </strong>{" "}
-          OpMind ne contient aucun tracker publicitaire ni outil
-          d&apos;analyse tiers (pas de Google Analytics, pas de Facebook
-          Pixel, etc.).
-        </p>
-      </LegalSection>
+            . Une réponse te sera apportée sous 30 jours.
+          </p>
+        </LegalSection>
 
-      <LegalSection title="Transferts hors UE">
-        <p>
-          Les données utilisateurs sont stockées exclusivement sur des
-          serveurs situés dans l&apos;Union européenne. Aucun transfert de
-          données hors UE n&apos;est effectué dans le cadre du
-          fonctionnement nominal du service.
-        </p>
-      </LegalSection>
+        <LegalSection title="Sous-traitants">
+          <p style={paragraphStyle}>
+            Pour fournir le service, nous utilisons les sous-traitants suivants :
+          </p>
+          <ul style={listStyle}>
+            <li style={listItemStyle}>
+              <strong style={strongStyle}>Supabase</strong> — Base de données et
+              authentification. Données hébergées dans l&apos;Union européenne.
+            </li>
+            <li style={listItemStyle}>
+              <strong style={strongStyle}>GitHub Pages</strong> — Hébergement du
+              site. Données transférées aux États-Unis (clauses contractuelles
+              types).
+            </li>
+          </ul>
+        </LegalSection>
 
-      <LegalSection title="Cookies">
-        <p>
-          Le site et l&apos;application utilisent uniquement des{" "}
-          <strong>cookies strictement nécessaires</strong> au fonctionnement
-          du service, en particulier les cookies de session
-          d&apos;authentification gérés par Supabase. Ces cookies sont
-          exemptés du consentement préalable selon la délibération de la
-          CNIL n°2020-091 du 17 septembre 2020.
-        </p>
-        <p>
-          Aucun cookie publicitaire, aucun cookie tiers de mesure
-          d&apos;audience, aucun pixel de traçage n&apos;est déposé.
-        </p>
-      </LegalSection>
+        <UpdatedAt />
+      </article>
 
-      <LegalSection title="Vos droits">
-        <p>
-          Conformément aux articles 15 à 22 du RGPD, vous disposez à tout
-          moment des droits suivants sur vos données personnelles :
-        </p>
-        <ul>
-          <li>
-            <strong>Droit d&apos;accès</strong> — obtenir confirmation et
-            copie de vos données
-          </li>
-          <li>
-            <strong>Droit de rectification</strong> — corriger des
-            informations inexactes
-          </li>
-          <li>
-            <strong>Droit à l&apos;effacement</strong> — suppression complète
-            de votre compte et de vos données (&laquo; droit à
-            l&apos;oubli &raquo;)
-          </li>
-          <li>
-            <strong>Droit à la portabilité</strong> — récupération de vos
-            données dans un format structuré et lisible (export JSON)
-          </li>
-          <li>
-            <strong>Droit d&apos;opposition</strong> au traitement
-          </li>
-          <li>
-            <strong>Droit à la limitation</strong> du traitement
-          </li>
-          <li>
-            <strong>Droit de retirer votre consentement</strong> à tout moment
-            (waitlist, communications)
-          </li>
-          <li>
-            <strong>Droit de définir des directives</strong> relatives au
-            sort de vos données après votre décès
-          </li>
-        </ul>
-        <p>
-          Pour exercer ces droits, écrivez à{" "}
-          <a href="mailto:contact@opmind.fr">contact@opmind.fr</a> en précisant
-          la nature de votre demande. Une preuve d&apos;identité pourra
-          être demandée en cas de doute légitime. La demande sera traitée
-          dans un délai maximum d&apos;<strong>un mois</strong>, prolongeable
-          de deux mois en cas de complexité particulière.
-        </p>
-        <p>
-          Si vous estimez, après nous avoir contactés, que vos droits ne sont
-          pas respectés, vous pouvez adresser une réclamation à la{" "}
-          <strong>
-            CNIL (Commission Nationale de l&apos;Informatique et des
-            Libertés)
-          </strong>{" "}
-          :{" "}
-          <a
-            href="https://www.cnil.fr/fr/plaintes"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            cnil.fr/fr/plaintes
-          </a>
-          .
-        </p>
-      </LegalSection>
-
-      <LegalSection title="Sécurité">
-        <p>
-          Les mesures techniques et organisationnelles suivantes sont mises
-          en œuvre pour protéger vos données :
-        </p>
-        <ul>
-          <li>
-            Chiffrement en transit via TLS 1.3 pour toutes les communications
-            entre l&apos;application et les serveurs
-          </li>
-          <li>
-            Mots de passe stockés de manière hachée (algorithme bcrypt), non
-            réversible
-          </li>
-          <li>
-            Politique <strong>Row Level Security</strong> (RLS) sur la base
-            de données : chaque utilisateur ne peut accéder qu&apos;à ses
-            propres données
-          </li>
-          <li>Sauvegardes chiffrées et géo-redondantes au sein de l&apos;UE</li>
-          <li>Accès aux systèmes de production strictement limité</li>
-        </ul>
-        <p>
-          Malgré ces mesures, aucun système n&apos;est inviolable. En cas de
-          violation de données susceptible d&apos;engendrer un risque élevé
-          pour vos droits et libertés, vous serez informé dans les meilleurs
-          délais conformément à l&apos;article 34 du RGPD.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="Mineurs">
-        <p>
-          OpMind est destinée à un public majeur (18 ans révolus) en raison
-          de la nature de l&apos;activité (tir sportif). La création de
-          compte par des mineurs est interdite. Si vous découvrez qu&apos;un
-          mineur s&apos;est inscrit, contactez{" "}
-          <a href="mailto:contact@opmind.fr">contact@opmind.fr</a> pour
-          suppression immédiate.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="Modifications">
-        <p>
-          La présente politique peut être amenée à évoluer. Toute
-          modification substantielle sera notifiée par email aux utilisateurs
-          inscrits au moins 15 jours avant son entrée en vigueur. La version
-          en vigueur est celle publiée sur cette page, datée en tête du
-          document.
-        </p>
-      </LegalSection>
-    </LegalLayout>
+      <Footer />
+    </main>
   );
 }
+
+/* ──────────────  Shared blocks (inline)  ────────────── */
+
+function TopBar() {
+  return (
+    <header
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 64,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 32px",
+        zIndex: 50,
+        background: "rgba(10,10,12,0.7)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        borderBottom: `1px solid ${LINE}`,
+      }}
+    >
+      <Link
+        href="/"
+        aria-label="Accueil OpMind"
+        style={{ display: "inline-block", textDecoration: "none" }}
+      >
+        <OpMindLogo />
+      </Link>
+      <Link
+        href="/login"
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          color: DIM_STRONG,
+          textDecoration: "none",
+        }}
+      >
+        Se connecter →
+      </Link>
+    </header>
+  );
+}
+
+function PageTitle({ children }: { children: ReactNode }) {
+  return (
+    <h1
+      style={{
+        fontFamily: FONT_DISPLAY,
+        fontSize: "clamp(40px, 7vw, 64px)",
+        fontWeight: 700,
+        lineHeight: 0.98,
+        letterSpacing: "-0.03em",
+        textTransform: "uppercase",
+        color: INK,
+        margin: 0,
+      }}
+    >
+      {children}
+    </h1>
+  );
+}
+
+function LegalSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section style={{ marginTop: 56 }}>
+      <h2
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 12,
+          letterSpacing: "0.24em",
+          textTransform: "uppercase",
+          color: ACCENT,
+          margin: 0,
+          marginBottom: 20,
+        }}
+      >
+        {title}
+      </h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function UpdatedAt() {
+  return (
+    <p
+      style={{
+        marginTop: 80,
+        fontFamily: FONT_MONO,
+        fontSize: 10,
+        letterSpacing: "0.22em",
+        textTransform: "uppercase",
+        color: DIM,
+      }}
+    >
+      Dernière mise à jour : Mai 2026
+    </p>
+  );
+}
+
+function Footer() {
+  return (
+    <footer
+      style={{
+        padding: "32px",
+        borderTop: `1px solid ${LINE}`,
+        background: BG,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 16,
+        fontFamily: FONT_MONO,
+        fontSize: 10,
+        letterSpacing: "0.22em",
+        textTransform: "uppercase",
+        color: DIM,
+      }}
+    >
+      <span>© OpMind · 2026</span>
+      <div style={{ display: "flex", gap: 20 }}>
+        <Link href="/cgu" style={{ color: DIM, textDecoration: "none" }}>
+          CGU
+        </Link>
+        <Link
+          href="/confidentialite"
+          style={{ color: DIM, textDecoration: "none" }}
+        >
+          Confidentialité
+        </Link>
+        <Link
+          href="/mentions-legales"
+          style={{ color: DIM, textDecoration: "none" }}
+        >
+          Mentions légales
+        </Link>
+      </div>
+    </footer>
+  );
+}
+
+function OpMindLogo() {
+  return (
+    <svg
+      viewBox="0 0 130 32"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="OpMind"
+      style={{ height: 26, width: "auto" }}
+    >
+      <text
+        x="0"
+        y="25"
+        fontFamily="'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif"
+        fontSize="28"
+        fontWeight="800"
+        letterSpacing="-0.5"
+        fill={INK}
+      >
+        OpMind<tspan fill={ACCENT}>.</tspan>
+      </text>
+    </svg>
+  );
+}
+
+/* ──────────────  Inline style helpers  ────────────── */
+
+const paragraphStyle: CSSProperties = {
+  fontFamily: FONT_BODY,
+  fontSize: 15,
+  lineHeight: 1.7,
+  color: INK,
+  margin: 0,
+};
+
+const strongStyle: CSSProperties = {
+  color: INK,
+  fontWeight: 600,
+};
+
+const linkStyle: CSSProperties = {
+  color: INK,
+  textDecoration: "underline",
+  textDecorationColor: ACCENT,
+  textUnderlineOffset: 2,
+};
+
+const listStyle: CSSProperties = {
+  fontFamily: FONT_BODY,
+  fontSize: 15,
+  lineHeight: 1.7,
+  color: INK,
+  margin: 0,
+  paddingLeft: 20,
+  listStyle: "disc",
+};
+
+const listItemStyle: CSSProperties = {
+  marginTop: 4,
+};

@@ -3,12 +3,13 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase } from "../../lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPwd, setShowPwd] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const email = String(fd.get("email") ?? "");
+    const email = String(fd.get("email") ?? "").trim();
     const password = String(fd.get("password") ?? "");
     const { error: signInError } = await getSupabase().auth.signInWithPassword({
       email,
@@ -36,148 +37,221 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen bg-black lg:grid-cols-2">
-      {/* LEFT — image + overlay + logo + tagline */}
-      <aside className="relative isolate hidden overflow-hidden lg:flex lg:flex-col lg:items-center lg:justify-center lg:px-10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/hero-shooter.jpg"
-          alt=""
-          className="absolute inset-0 -z-20 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 -z-10 bg-black/60" />
-
-        <div className="relative z-10 flex max-w-md flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="OpMind" className="h-28 w-auto" />
-          <p className="mt-14 font-mono text-3xl font-bold uppercase leading-[1.15] tracking-tight text-white md:text-4xl">
-            Content de
-            <br />
-            <span className="text-[#7A0000]">te revoir.</span>
-          </p>
-          <div className="mt-10 h-px w-24 bg-[#7A0000]" />
-          <p className="mt-10 font-mono text-xs uppercase tracking-[0.25em] text-[#888]">
-            Reprends là où tu t'étais arrêté
-          </p>
+    <main
+      style={{
+        display: "flex",
+        width: "100vw",
+        height: "100vh",
+        fontFamily: "var(--font-geist-sans), sans-serif",
+      }}
+    >
+      {/* COLONNE GAUCHE */}
+      <aside
+        style={{
+          width: "40%",
+          height: "100%",
+          background: "#0a0a0c",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "0 64px",
+          position: "relative",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ position: "absolute", top: 32, left: 32 }}>
+          <OpMindLogo />
         </div>
+        <h1
+          style={{
+            fontFamily: "Antonio, sans-serif",
+            fontSize: "clamp(48px, 5vw, 80px)",
+            lineHeight: 0.95,
+            letterSpacing: "-0.03em",
+            textTransform: "uppercase",
+            color: "#ebe5d2",
+            margin: 0,
+          }}
+        >
+          BON<br />RETOUR.
+        </h1>
+        <p
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(235,229,210,0.45)",
+            marginTop: 16,
+          }}
+        >
+          TON ENTRAÎNEMENT T&apos;ATTEND.
+        </p>
       </aside>
 
-      {/* RIGHT — form on #0A0A0A */}
-      <section className="relative flex items-center justify-center bg-[#0A0A0A] px-6 py-16 md:px-12 md:py-20">
-        {/* Mobile-only header */}
-        <Link
-          href="/"
-          className="absolute left-1/2 top-10 -translate-x-1/2 transition hover:opacity-80 lg:hidden"
-          aria-label="Retour à l'accueil"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="OpMind" className="h-16 w-auto" />
-        </Link>
+      {/* COLONNE DROITE */}
+      <div
+        style={{
+          flex: 1,
+          height: "100%",
+          background: "#0d0d12",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "0 64px",
+          overflowY: "auto",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 400 }}>
+          <h2 className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-[#ebe5d2]">
+            Connexion
+          </h2>
 
-        <div className="w-full max-w-md">
-          <h1 className="font-mono text-5xl font-bold uppercase tracking-tight text-white md:text-6xl">
-            Se connecter
-          </h1>
-          <p className="mt-4 text-base font-light text-[#888]">
-            Accède à ton compte OpMind.
-          </p>
+          <form onSubmit={onSubmit} className="mt-12 space-y-7" noValidate>
+            <label className="block">
+              <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#888]">
+                Email
+              </span>
+              <input
+                type="email"
+                name="email"
+                placeholder="ton@email.fr"
+                autoComplete="email"
+                required
+                className="mt-2 block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
+              />
+            </label>
 
-          <form onSubmit={onSubmit} className="mt-14 space-y-8">
-            <Field
-              label="Email"
-              type="email"
-              name="email"
-              placeholder="ton@email.fr"
-              autoComplete="email"
-            />
-            <Field
-              label="Mot de passe"
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-
-            {/* Remember me + forgot password row */}
-            <div className="flex items-center justify-between gap-4">
-              <label className="group inline-flex cursor-pointer items-center gap-3">
+            <label className="block">
+              <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#888]">
+                Mot de passe
+              </span>
+              <div className="relative mt-2">
                 <input
-                  type="checkbox"
-                  name="remember"
-                  className="h-4 w-4 cursor-pointer appearance-none border border-[#333] bg-transparent transition-colors checked:border-[#7A0000] checked:bg-[#7A0000] focus:outline-none"
+                  type={showPwd ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  required
+                  className="block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 pr-10 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
                 />
-                <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#888] transition-colors group-hover:text-white">
-                  Se souvenir de moi
-                </span>
-              </label>
-
-              <Link
-                href="#"
-                className="text-sm text-[#888] transition-colors hover:text-white"
-              >
-                Mot de passe oublié ?
-              </Link>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-2 text-[#888] transition-colors hover:text-[#ebe5d2]"
+                  aria-label={
+                    showPwd
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  aria-pressed={showPwd}
+                >
+                  {showPwd ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </label>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 w-full bg-[#7A0000] py-4 font-mono text-lg font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#5A0000] disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full bg-[#7A0000] px-4 py-[14px] font-mono text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#5A0000] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading ? "Connexion en cours..." : "Se connecter"}
             </button>
 
             {error && (
               <p
                 role="alert"
-                className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-red-400"
+                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#e84a3a]"
               >
                 {error}
               </p>
             )}
-          </form>
 
-          <p className="mt-12 text-center text-sm text-[#888]">
-            Pas encore de compte ?{" "}
-            <Link
-              href="/register"
-              className="font-mono font-semibold uppercase tracking-wider text-white transition-colors hover:text-[#7A0000]"
-            >
-              S'inscrire
-            </Link>
-          </p>
+            <div className="flex flex-col gap-3 pt-2">
+              <Link
+                href="#"
+                className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#888] transition hover:text-[#ebe5d2]"
+              >
+                Mot de passe oublié ?
+              </Link>
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#888]">
+                Pas encore de compte ?{" "}
+                <Link
+                  href="/register"
+                  className="text-[#ebe5d2] transition hover:text-[#7A0000]"
+                >
+                  S&apos;inscrire →
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
 
-function Field({
-  label,
-  type,
-  name,
-  placeholder,
-  autoComplete,
-}: {
-  label: string;
-  type: string;
-  name: string;
-  placeholder?: string;
-  autoComplete?: string;
-}) {
+function OpMindLogo({ className = "h-7 w-auto" }: { className?: string }) {
   return (
-    <label className="block">
-      <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#888]">
-        {label}
-      </span>
-      <input
-        type={type}
-        name={name}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        required
-        className="mt-3 block w-full border-b border-[#333] bg-transparent py-4 font-sans text-base text-white placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
-      />
-    </label>
+    <svg
+      viewBox="0 0 130 32"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="OpMind"
+      className={className}
+    >
+      <text
+        x="0"
+        y="25"
+        fontFamily="'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif"
+        fontSize="28"
+        fontWeight="800"
+        letterSpacing="-0.5"
+        fill="#ebe5d2"
+      >
+        OpMind<tspan fill="#7A0000">.</tspan>
+      </text>
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.7 19.7 0 0 1 4.22-5.43" />
+      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.66 19.66 0 0 1-3.36 4.41" />
+      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
   );
 }

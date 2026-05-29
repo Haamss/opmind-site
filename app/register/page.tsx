@@ -2,27 +2,83 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { getSupabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { getSupabase } from "../../lib/supabase";
+
+type Strength = "empty" | "weak" | "medium" | "strong";
+
+function computeStrength(pwd: string): Strength {
+  if (!pwd) return "empty";
+  if (pwd.length < 8) return "weak";
+  if (pwd.length > 12 && /[A-Z]/.test(pwd) && /\d/.test(pwd)) return "strong";
+  return "medium";
+}
+
+const STRENGTH_META: Record<
+  Strength,
+  { label: string; width: string; color: string }
+> = {
+  empty: { label: "", width: "0%", color: "transparent" },
+  weak: { label: "Faible", width: "33%", color: "#e84a3a" },
+  medium: { label: "Moyen", width: "66%", color: "#f5a623" },
+  strong: { label: "Fort", width: "100%", color: "#5ad99b" },
+};
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwd, setPwd] = useState("");
+
+  const strength = computeStrength(pwd);
+  const meta = STRENGTH_META[strength];
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (loading) return;
     setError(null);
-    setLoading(true);
+
     const fd = new FormData(e.currentTarget);
-    const email = String(fd.get("email") ?? "");
+    const firstName = String(fd.get("first_name") ?? "").trim();
+    const lastName = String(fd.get("last_name") ?? "").trim();
+    const email = String(fd.get("email") ?? "").trim();
     const password = String(fd.get("password") ?? "");
-    const name = String(fd.get("name") ?? "");
+    const confirm = String(fd.get("confirm_password") ?? "");
+    const role = String(fd.get("role") ?? "");
+    const cgu = fd.get("cgu") === "on";
+    const rgpd = fd.get("rgpd") === "on";
+
+    if (!firstName || !lastName) {
+      setError("Prénom et nom obligatoires.");
+      return;
+    }
+    if (!role) {
+      setError("Choisis ton rôle.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Mot de passe trop court (8 caractères minimum).");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    if (!cgu || !rgpd) {
+      setError("Tu dois accepter les conditions et consentir au traitement RGPD.");
+      return;
+    }
+
+    setLoading(true);
     const { error: signUpError } = await getSupabase().auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: {
+        data: { first_name: firstName, last_name: lastName, role },
+      },
     });
+
     if (signUpError) {
       const m = signUpError.message;
       setError(
@@ -33,150 +89,336 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
-    setSuccess(true);
-    setLoading(false);
+    router.push("/dashboard");
   }
 
-  return (
-    <main className="grid min-h-screen bg-black lg:grid-cols-2">
-      {/* LEFT — image + overlay + logo + tagline */}
-      <aside className="relative isolate hidden overflow-hidden lg:flex lg:flex-col lg:items-center lg:justify-center lg:px-10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/hero-shooter.jpg"
-          alt=""
-          className="absolute inset-0 -z-20 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 -z-10 bg-black/60" />
+  const inputClass =
+    "mt-2 block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none";
+  const labelClass =
+    "block font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#888]";
 
-        <div className="relative z-10 flex max-w-md flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="OpMind" className="h-28 w-auto" />
-          <p className="mt-14 font-mono text-3xl font-bold uppercase leading-[1.15] tracking-tight text-white md:text-4xl">
-            Rejoins la communauté
-            <br />
-            <span className="text-[#7A0000]">des tireurs exigeants.</span>
-          </p>
-          <div className="mt-10 h-px w-24 bg-[#7A0000]" />
-          <p className="mt-10 font-mono text-xs uppercase tracking-[0.25em] text-[#888]">
-            Bêta privée · 2026
-          </p>
+  return (
+    <main
+      style={{
+        display: "flex",
+        width: "100vw",
+        height: "100vh",
+        fontFamily: "var(--font-geist-sans), sans-serif",
+      }}
+    >
+      {/* COLONNE GAUCHE */}
+      <aside
+        style={{
+          width: "40%",
+          height: "100%",
+          background: "#0a0a0c",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "0 64px",
+          position: "relative",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ position: "absolute", top: 32, left: 32 }}>
+          <OpMindLogo />
         </div>
+        <h1
+          style={{
+            fontFamily: "Antonio, sans-serif",
+            fontSize: "clamp(48px, 5vw, 80px)",
+            lineHeight: 0.95,
+            letterSpacing: "-0.03em",
+            textTransform: "uppercase",
+            color: "#ebe5d2",
+            margin: 0,
+          }}
+        >
+          REJOINS<br />OPMIND.
+        </h1>
+        <p
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(235,229,210,0.45)",
+            marginTop: 16,
+          }}
+        >
+          MESURE TA PROGRESSION. STRUCTURE TON TIR.
+        </p>
       </aside>
 
-      {/* RIGHT — form on #0A0A0A */}
-      <section className="relative flex items-center justify-center bg-[#0A0A0A] px-6 py-16 md:px-12 md:py-20">
-        {/* Mobile-only header */}
-        <Link
-          href="/"
-          className="absolute left-1/2 top-10 -translate-x-1/2 transition hover:opacity-80 lg:hidden"
-          aria-label="Retour à l'accueil"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="OpMind" className="h-16 w-auto" />
-        </Link>
+      {/* COLONNE DROITE */}
+      <div
+        style={{
+          flex: 1,
+          height: "100%",
+          background: "#0d0d12",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "0 64px",
+          overflowY: "auto",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 400 }}>
+          <h2 className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-[#ebe5d2]">
+            Créer un compte
+          </h2>
 
-        <div className="w-full max-w-md">
-          <h1 className="font-mono text-5xl font-bold uppercase tracking-tight text-white md:text-6xl">
-            S'inscrire
-          </h1>
-          <p className="mt-4 text-base font-light text-[#888]">
-            Crée ton compte et accède à la bêta.
-          </p>
-
-          {success ? (
-            <div className="mt-14 border border-l-4 border-[#7A0000] bg-[#7A0000]/15 px-6 py-8">
-              <p className="font-mono text-base font-bold uppercase tracking-tight text-white">
-                Vérifie ta boîte mail
-              </p>
-              <p className="mt-3 text-sm font-light text-[#888]">
-                On t'a envoyé un lien pour confirmer ton compte.
-              </p>
+          <form onSubmit={onSubmit} className="mt-12 space-y-6" noValidate>
+            {/* First + Last name */}
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block">
+                <span className={labelClass}>Prénom</span>
+                <input
+                  type="text"
+                  name="first_name"
+                  autoComplete="given-name"
+                  required
+                  className={inputClass}
+                />
+              </label>
+              <label className="block">
+                <span className={labelClass}>Nom</span>
+                <input
+                  type="text"
+                  name="last_name"
+                  autoComplete="family-name"
+                  required
+                  className={inputClass}
+                />
+              </label>
             </div>
-          ) : (
-            <form onSubmit={onSubmit} className="mt-14 space-y-8">
-              <Field
-                label="Nom"
-                type="text"
-                name="name"
-                placeholder="Ton nom"
-                autoComplete="name"
-              />
-              <Field
-                label="Email"
+
+            {/* Email */}
+            <label className="block">
+              <span className={labelClass}>Email</span>
+              <input
                 type="email"
                 name="email"
                 placeholder="ton@email.fr"
                 autoComplete="email"
+                required
+                className={inputClass}
               />
-              <Field
-                label="Mot de passe"
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
+            </label>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-4 w-full bg-[#7A0000] py-4 font-mono text-lg font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#5A0000] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? "Inscription..." : "S'inscrire"}
-              </button>
-
-              {error && (
-                <p
-                  role="alert"
-                  className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-red-400"
+            {/* Password + strength bar */}
+            <label className="block">
+              <span className={labelClass}>Mot de passe</span>
+              <div className="relative mt-2">
+                <input
+                  type={showPwd ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  required
+                  value={pwd}
+                  onChange={(e) => setPwd(e.target.value)}
+                  className="block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 pr-10 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-2 text-[#888] transition-colors hover:text-[#ebe5d2]"
+                  aria-label={
+                    showPwd
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  aria-pressed={showPwd}
                 >
-                  {error}
+                  {showPwd ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <div className="mt-2 h-[3px] w-full bg-[rgba(235,229,210,0.08)]">
+                <div
+                  className="h-full transition-all duration-200"
+                  style={{ width: meta.width, backgroundColor: meta.color }}
+                />
+              </div>
+              {strength !== "empty" && (
+                <p
+                  className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em]"
+                  style={{ color: meta.color }}
+                >
+                  {meta.label}
                 </p>
               )}
-            </form>
-          )}
+            </label>
 
-          <p className="mt-12 text-center text-sm text-[#888]">
-            Déjà un compte ?{" "}
-            <Link
-              href="/login"
-              className="font-mono font-semibold uppercase tracking-wider text-white transition-colors hover:text-[#7A0000]"
+            {/* Confirm password */}
+            <label className="block">
+              <span className={labelClass}>Confirmer mot de passe</span>
+              <input
+                type={showPwd ? "text" : "password"}
+                name="confirm_password"
+                placeholder="••••••••"
+                autoComplete="new-password"
+                required
+                className={inputClass}
+              />
+            </label>
+
+            {/* Role */}
+            <label className="block">
+              <span className={labelClass}>Rôle</span>
+              <select
+                name="role"
+                required
+                defaultValue=""
+                className="mt-2 block w-full appearance-none border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 pr-8 font-mono text-[13px] text-[#ebe5d2] transition-colors focus:border-[#7A0000] focus:outline-none"
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 4px center",
+                  backgroundSize: "12px",
+                }}
+              >
+                <option value="" disabled>
+                  Choisir un rôle
+                </option>
+                <option value="shooter">TIREUR SPORTIF</option>
+                <option value="instructor">INSTRUCTEUR</option>
+                <option value="club_manager">RESPONSABLE DE CLUB</option>
+              </select>
+            </label>
+
+            {/* Checkboxes — CGU + RGPD */}
+            <div className="space-y-3 pt-2">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="cgu"
+                  required
+                  className="mt-[2px] h-4 w-4 cursor-pointer appearance-none border border-[rgba(235,229,210,0.3)] bg-transparent transition-colors checked:border-[#7A0000] checked:bg-[#7A0000] focus:outline-none"
+                />
+                <span className="font-mono text-[11px] leading-relaxed text-[#888]">
+                  J&apos;accepte les{" "}
+                  <Link
+                    href="/cgu"
+                    className="text-[#ebe5d2] underline decoration-[#7A0000] underline-offset-2 transition hover:decoration-[#ebe5d2]"
+                  >
+                    conditions d&apos;utilisation
+                  </Link>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="rgpd"
+                  required
+                  className="mt-[2px] h-4 w-4 cursor-pointer appearance-none border border-[rgba(235,229,210,0.3)] bg-transparent transition-colors checked:border-[#7A0000] checked:bg-[#7A0000] focus:outline-none"
+                />
+                <span className="font-mono text-[11px] leading-relaxed text-[#888]">
+                  Je consens au{" "}
+                  <Link
+                    href="/confidentialite"
+                    className="text-[#ebe5d2] underline decoration-[#7A0000] underline-offset-2 transition hover:decoration-[#ebe5d2]"
+                  >
+                    traitement de mes données
+                  </Link>
+                </span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 w-full bg-[#7A0000] px-4 py-[14px] font-mono text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#5A0000] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Se connecter
-            </Link>
-          </p>
+              {loading ? "Création en cours..." : "Créer mon compte"}
+            </button>
+
+            {error && (
+              <p
+                role="alert"
+                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#e84a3a]"
+              >
+                {error}
+              </p>
+            )}
+
+            <p className="pt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#888]">
+              Déjà un compte ?{" "}
+              <Link
+                href="/login"
+                className="text-[#ebe5d2] transition hover:text-[#7A0000]"
+              >
+                Se connecter →
+              </Link>
+            </p>
+          </form>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
 
-function Field({
-  label,
-  type,
-  name,
-  placeholder,
-  autoComplete,
-}: {
-  label: string;
-  type: string;
-  name: string;
-  placeholder?: string;
-  autoComplete?: string;
-}) {
+function OpMindLogo({ className = "h-7 w-auto" }: { className?: string }) {
   return (
-    <label className="block">
-      <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#888]">
-        {label}
-      </span>
-      <input
-        type={type}
-        name={name}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        required
-        className="mt-3 block w-full border-b border-[#333] bg-transparent py-4 font-sans text-base text-white placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
-      />
-    </label>
+    <svg
+      viewBox="0 0 130 32"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="OpMind"
+      className={className}
+    >
+      <text
+        x="0"
+        y="25"
+        fontFamily="'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif"
+        fontSize="28"
+        fontWeight="800"
+        letterSpacing="-0.5"
+        fill="#ebe5d2"
+      >
+        OpMind<tspan fill="#7A0000">.</tspan>
+      </text>
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.7 19.7 0 0 1 4.22-5.43" />
+      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.66 19.66 0 0 1-3.36 4.41" />
+      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
   );
 }

@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabase } from "@/lib/supabase";
-import { Sidebar, MobileTopbar } from "@/components/dashboard/Sidebar";
+import { getSupabase } from "../../lib/supabase";
+import DashboardSidebar from "./_components/Sidebar";
 
-type Status = "checking" | "authed" | "anon" | "forbidden";
+type LayoutProfile = {
+  first_name?: string | null;
+  last_name?: string | null;
+  role?: string | null;
+  email?: string | null;
+};
 
 export default function DashboardLayout({
   children,
@@ -13,7 +18,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState<Status>("checking");
+  const [ready, setReady] = useState(false);
+  const [profile, setProfile] = useState<LayoutProfile | null>(null);
+  const [counts, setCounts] = useState<{
+    stages: number;
+    sessions: number;
+    shooters: number;
+  }>({ stages: 0, sessions: 0, shooters: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -22,70 +33,95 @@ export default function DashboardLayout({
       const { data } = await sb.auth.getSession();
       if (cancelled) return;
       if (!data.session) {
-        setStatus("anon");
         router.replace("/login");
         return;
       }
-      const { data: profile } = await sb
-        .from("profiles")
-        .select("role,is_admin")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      const role = profile?.role ?? null;
-      if (role !== "instructor" && !profile?.is_admin) {
-        setStatus("forbidden");
-        return;
+      const userId = data.session.user.id;
+      const userEmail = data.session.user.email ?? null;
+
+      setReady(true);
+
+      try {
+        const { data: prof } = await sb
+          .from("profiles")
+          .select("first_name,last_name,role,email")
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (prof) {
+          const p = prof as LayoutProfile;
+          setProfile({ ...p, email: p.email ?? userEmail });
+        } else {
+          setProfile({ email: userEmail });
+        }
+      } catch {
+        if (!cancelled) setProfile({ email: userEmail });
       }
-      setStatus("authed");
+
+      const safeCount = async (
+        table: string,
+        col: string,
+        value: string
+      ): Promise<number> => {
+        try {
+          const { count } = await sb
+            .from(table)
+            .select("id", { count: "exact", head: true })
+            .eq(col, value);
+          return count || 0;
+        } catch {
+          return 0;
+        }
+      };
+
+      const [stagesCount, sessionsCount, shootersCount] = await Promise.all([
+        safeCount("stages", "user_id", userId),
+        safeCount("sessions", "user_id", userId),
+        safeCount("instructor_shooters", "instructor_id", userId),
+      ]);
+      if (cancelled) return;
+      setCounts({
+        stages: stagesCount,
+        sessions: sessionsCount,
+        shooters: shootersCount,
+      });
     })();
     return () => {
       cancelled = true;
     };
   }, [router]);
 
-  if (status === "forbidden") {
+  if (!ready) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black px-6 text-center">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-[#E84040]">
-          Accès refusé
-        </p>
-        <h1 className="font-mono text-2xl font-bold uppercase tracking-tight text-white">
-          Espace réservé aux instructeurs
-        </h1>
-        <p className="max-w-md font-mono text-xs uppercase tracking-[0.22em] text-[#666]">
-          Ton compte n&apos;a pas les droits nécessaires.
-        </p>
-        <button
-          type="button"
-          onClick={async () => {
-            await getSupabase().auth.signOut();
-            router.replace("/login");
-          }}
-          className="mt-4 border border-[#7A0000] bg-transparent px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#7A0000]"
-        >
-          Se déconnecter
-        </button>
-      </main>
-    );
-  }
-
-  if (status !== "authed") {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-black">
-        <p className="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-[#666]">
-          Vérification...
-        </p>
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#0a0a0c",
+          color: "#ebe5d2",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "JetBrains Mono, monospace",
+          fontSize: 12,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          opacity: 0.5,
+        }}
+      >
+        Vérification...
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white md:flex">
-      <Sidebar />
-      <MobileTopbar />
-      <div aria-hidden className="hidden shrink-0 md:block md:w-56" />
-      <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+    <div style={{ minHeight: "100vh", background: "#0a0a0c" }}>
+      <DashboardSidebar
+        profile={profile}
+        stagesCount={counts.stages}
+        sessionsCount={counts.sessions}
+        shootersCount={counts.shooters}
+      />
+      <div style={{ marginLeft: 220, minHeight: "100vh" }}>{children}</div>
     </div>
   );
 }

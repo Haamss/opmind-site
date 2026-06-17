@@ -89,15 +89,6 @@ type Session = {
   cooldown?: SessionCooldown | null;
 };
 
-type ShooterRow = {
-  id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string | null;
-  role?: string | null;
-  last_session_at?: string | null;
-};
-
 type View =
   | "create_session"
   | "home"
@@ -116,7 +107,6 @@ const VIEW_VALUES: View[] = [
   "stages",
   "sessions",
   "performance",
-  "shooters",
   "profile",
   "settings",
 ];
@@ -142,7 +132,6 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [shooters, setShooters] = useState<ShooterRow[]>([]);
   const [stagesCount, setStagesCount] = useState(0);
   const [sessionsCount, setSessionsCount] = useState(0);
   const [ammoCount, setAmmoCount] = useState(0);
@@ -225,33 +214,6 @@ export default function DashboardPage() {
         // sessions table missing — leave empty
       }
 
-      // shooters (instructor / club_manager only)
-      if (prof.role === "instructor" || prof.role === "club_manager") {
-        try {
-          const { data: assigns } = await sb
-            .from("assignments")
-            .select("shooter_id")
-            .eq("instructor_id", userId);
-          const ids =
-            Array.isArray(assigns) && assigns.length > 0
-              ? assigns
-                  .map((a: { shooter_id?: string }) => a?.shooter_id)
-                  .filter((id): id is string => Boolean(id))
-              : [];
-          if (ids.length > 0) {
-            const { data: profs } = await sb
-              .from("profiles")
-              .select("id,first_name,last_name,email,role")
-              .in("id", ids);
-            if (!cancelled && Array.isArray(profs)) {
-              setShooters(profs as ShooterRow[]);
-            }
-          }
-        } catch {
-          // assignments table missing — leave empty
-        }
-      }
-
       if (!cancelled) setLoading(false);
     })();
     return () => {
@@ -327,8 +289,6 @@ export default function DashboardPage() {
     }
   }
 
-  const role = profile?.role ?? "shooter";
-  const canSeeShooters = role === "instructor" || role === "club_manager";
   const streak = computeStreak(sessions);
   const firstName = (profile?.first_name || "").trim();
 
@@ -396,9 +356,6 @@ export default function DashboardPage() {
           )}
           {view === "performance" && (
             <PerformanceView sessions={sessions} stages={stages} />
-          )}
-          {view === "shooters" && canSeeShooters && (
-            <ShootersView shooters={shooters} />
           )}
           {view === "profile" && (
             <ProfileView profile={profile} setProfile={setProfile} />
@@ -2748,210 +2705,6 @@ function IconList() {
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="18" x2="20" y2="18" />
     </svg>
-  );
-}
-
-/* ──────────────  Shooters view  ────────────── */
-
-function ShootersView({ shooters }: { shooters: ShooterRow[] }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  async function onAddShooter() {
-    setFeedback(null);
-    const email = emailInput.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setFeedback("Email invalide.");
-      return;
-    }
-    try {
-      const sb = getSupabase();
-      const {
-        data: { session },
-      } = await sb.auth.getSession();
-      if (!session) {
-        setFeedback("Session expirée.");
-        return;
-      }
-      const { data: prof } = await sb.rpc("find_profile_by_email", {
-        p_email: email,
-      });
-      // RPC SECURITY DEFINER gated instructeur → tableau (0 ou 1 ligne)
-      const match = (
-        prof as
-          | { id: string; first_name: string | null; last_name: string | null }[]
-          | null
-      )?.[0];
-      if (!match?.id) {
-        setFeedback("Aucun tireur trouvé avec cet email.");
-        return;
-      }
-      const { error } = await sb.from("assignments").insert({
-        instructor_id: session.user.id,
-        shooter_id: match.id,
-      });
-      if (error) {
-        setFeedback("Impossible d'ajouter ce tireur.");
-        return;
-      }
-      setFeedback("Tireur ajouté. Rafraîchis la page.");
-      setEmailInput("");
-    } catch {
-      setFeedback("Erreur — table assignments indisponible.");
-    }
-  }
-
-  return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 24,
-        }}
-      >
-        <h1
-          style={{
-            fontFamily: "var(--font-barlow-condensed), system-ui, sans-serif",
-            fontSize: 32,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "-0.02em",
-            color: "#ebe5d2",
-            margin: 0,
-          }}
-        >
-          Mes tireurs
-        </h1>
-        <button
-          type="button"
-          onClick={() => {
-            setModalOpen(true);
-            setFeedback(null);
-          }}
-          style={{
-            background: "#7A0000",
-            color: "#fff",
-            padding: "10px 18px",
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Ajouter un tireur
-        </button>
-      </div>
-
-      {shooters.length === 0 ? (
-        <EmptyRow>Aucun tireur assigné.</EmptyRow>
-      ) : (
-        <Table
-          headers={["Nom", "Email", "Rôle", "Dernière session"]}
-          rows={shooters.map((s) => [
-            [s.first_name, s.last_name].filter(Boolean).join(" ") || "—",
-            s.email || "—",
-            (s.role || "—").toUpperCase(),
-            s.last_session_at ? formatDate(s.last_session_at) : "—",
-          ])}
-        />
-      )}
-
-      {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="Ajouter un tireur">
-          <p
-            style={{
-              fontFamily: "JetBrains Mono, monospace",
-              fontSize: 11,
-              color: "rgba(235,229,210,0.55)",
-              letterSpacing: "0.06em",
-              marginBottom: 16,
-            }}
-          >
-            Entre l&apos;email du tireur déjà inscrit sur OpMind.
-          </p>
-          <input
-            type="email"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            placeholder="tireur@email.fr"
-            style={{
-              width: "100%",
-              background: "#0a0a0c",
-              border: "none",
-              borderBottom: "1px solid rgba(235,229,210,0.2)",
-              color: "#ebe5d2",
-              padding: "10px 0",
-              fontFamily: "JetBrains Mono, monospace",
-              fontSize: 13,
-              outline: "none",
-            }}
-          />
-          {feedback && (
-            <p
-              style={{
-                marginTop: 12,
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 11,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: /ajouté/i.test(feedback) ? "#5ad99b" : "#e84a3a",
-              }}
-            >
-              {feedback}
-            </p>
-          )}
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginTop: 20,
-              justifyContent: "flex-end",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(235,229,210,0.16)",
-                color: "rgba(235,229,210,0.55)",
-                padding: "8px 14px",
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 10,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              Fermer
-            </button>
-            <button
-              type="button"
-              onClick={onAddShooter}
-              style={{
-                background: "#7A0000",
-                color: "#fff",
-                border: "none",
-                padding: "8px 14px",
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 10,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              Ajouter
-            </button>
-          </div>
-        </Modal>
-      )}
-    </div>
   );
 }
 
@@ -7469,25 +7222,6 @@ function parseDrillsFromInstructions(text: string): DrillDraft[] {
   return [{ ...emptyDrill(), name: text.slice(0, 80) }];
 }
 
-const SHOOTER_PALETTE = [
-  "#7A0000",
-  "#1a3a5c",
-  "#5a3a00",
-  "#005a3a",
-  "#5a0050",
-  "#3a5a00",
-  "#5a3a3a",
-  "#003a5a",
-];
-
-function shooterColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash + id.charCodeAt(i)) % SHOOTER_PALETTE.length;
-  }
-  return SHOOTER_PALETTE[hash];
-}
-
 function CreateSessionView({
   setView,
   initialData,
@@ -7589,7 +7323,6 @@ function CreateSessionView({
       ? initialData!.coach_shooter_ids!
       : []
   );
-  const [assignedShooters, setAssignedShooters] = useState<ShooterRow[]>([]);
   const [userInitials, setUserInitials] = useState<string>("RO");
   const [weapon, setWeapon] = useState<string>(initialData?.weapon ?? "");
   const [weaponSuggestions, setWeaponSuggestions] = useState<string[]>([]);
@@ -7746,33 +7479,6 @@ function CreateSessionView({
           const initials =
             ((fn.charAt(0) || "") + (ln.charAt(0) || "")).toUpperCase() || "RO";
           if (!cancelled) setUserInitials(initials);
-
-          const role = profRow?.role || "";
-          if (role === "instructor" || role === "club_manager") {
-            try {
-              const { data: assigns } = await sb
-                .from("assignments")
-                .select("shooter_id")
-                .eq("instructor_id", userId);
-              const ids =
-                Array.isArray(assigns) && assigns.length > 0
-                  ? (assigns as { shooter_id?: string }[])
-                      .map((a) => a?.shooter_id)
-                      .filter((x): x is string => !!x)
-                  : [];
-              if (ids.length > 0) {
-                const { data: profs } = await sb
-                  .from("profiles")
-                  .select("id,first_name,last_name,email,role")
-                  .in("id", ids);
-                if (!cancelled && Array.isArray(profs)) {
-                  setAssignedShooters(profs as ShooterRow[]);
-                }
-              }
-            } catch {
-              // assignments table missing
-            }
-          }
         } catch {
           // profiles select failed
         }
@@ -7901,12 +7607,6 @@ function CreateSessionView({
 
   function prevStep() {
     if (step > 1) setStep(step - 1);
-  }
-
-  function toggleShooter(id: string) {
-    setSelectedShooters((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
   }
 
   function toggleEquipment(key: string) {
@@ -8412,39 +8112,21 @@ function CreateSessionView({
                       label="Coaching"
                     />
                   </div>
-                  {coachingMode &&
-                    (assignedShooters.length === 0 ? (
-                      <p
-                        style={{
-                          margin: 0,
-                          fontFamily: "JetBrains Mono, monospace",
-                          fontSize: 11,
-                          letterSpacing: "0.14em",
-                          textTransform: "uppercase",
-                          color: "rgba(235,229,210,0.45)",
-                        }}
-                      >
-                        Aucun tireur assigné — ajoute-les depuis l&apos;onglet
-                        Mes tireurs.
-                      </p>
-                    ) : (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
-                      >
-                        {assignedShooters.map((s) => (
-                          <ShooterChip
-                            key={s.id}
-                            shooter={s}
-                            selected={selectedShooters.includes(s.id)}
-                            onToggle={() => toggleShooter(s.id)}
-                          />
-                        ))}
-                      </div>
-                    ))}
+                  {coachingMode && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontFamily: "JetBrains Mono, monospace",
+                        fontSize: 11,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        color: "rgba(235,229,210,0.45)",
+                      }}
+                    >
+                      Gère tes tireurs depuis l&apos;onglet Mes tireurs du
+                      dashboard.
+                    </p>
+                  )}
                 </Field>
               </div>
             </div>
@@ -9843,85 +9525,6 @@ function ModeCard({
   );
 }
 
-function ShooterChip({
-  shooter,
-  selected,
-  onToggle,
-}: {
-  shooter: ShooterRow;
-  selected: boolean;
-  onToggle: () => void;
-}) {
-  const fn = (shooter.first_name || "").trim();
-  const ln = (shooter.last_name || "").trim();
-  const initials =
-    ((fn.charAt(0) || "") + (ln.charAt(0) || "")).toUpperCase() ||
-    (shooter.email || "?").charAt(0).toUpperCase();
-  const name =
-    [fn, ln].filter(Boolean).join(" ") || shooter.email || "Tireur";
-  const role = (shooter.role || "").toUpperCase();
-  const bg = shooterColor(shooter.id);
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "4px 12px 4px 4px",
-        background: selected ? "rgba(122,0,0,0.15)" : "transparent",
-        border: selected
-          ? "1px solid #7A0000"
-          : "1px solid rgba(235,229,210,0.16)",
-        cursor: "pointer",
-        transition: "background .15s, border-color .15s",
-      }}
-    >
-      <span
-        style={{
-          width: 28,
-          height: 28,
-          background: bg,
-          color: "#fff",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "JetBrains Mono, monospace",
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-        }}
-      >
-        {initials}
-      </span>
-      <span
-        style={{
-          fontFamily: "JetBrains Mono, monospace",
-          fontSize: 11,
-          color: selected ? "#ebe5d2" : "rgba(235,229,210,0.65)",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-        }}
-      >
-        {name}
-      </span>
-      {role && (
-        <span
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 9,
-            color: "rgba(235,229,210,0.4)",
-            letterSpacing: "0.14em",
-          }}
-        >
-          · {role}
-        </span>
-      )}
-    </button>
-  );
-}
-
 function MetricCell({ label, value }: { label: string; value: string }) {
   return (
     <div
@@ -10531,58 +10134,6 @@ function EmptyRow({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#0d0d12",
-          border: "1px solid rgba(255,255,255,0.1)",
-          padding: 24,
-          width: "100%",
-          maxWidth: 420,
-          margin: "0 16px",
-        }}
-      >
-        <h3
-          style={{
-            fontFamily: "var(--font-barlow-condensed), system-ui, sans-serif",
-            fontSize: 20,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "-0.01em",
-            color: "#ebe5d2",
-            margin: "0 0 16px 0",
-          }}
-        >
-          {title}
-        </h3>
-        {children}
-      </div>
     </div>
   );
 }

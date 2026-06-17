@@ -15,8 +15,16 @@ import {
   type SessionFeedbackRow,
 } from "@/components/dashboard/data";
 import { moduleLabel } from "@/components/dashboard/modules";
-import styles from "./fiche.module.css";
+import styles from "@/components/dashboard/dashboard.module.css";
 import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
+import {
+  fmtDM,
+  fmtDot,
+  fmtSlash,
+  modChartColor,
+  moduleBadgeClass,
+  moduleShort,
+} from "@/components/dashboard/format";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
   AssignmentStatusBadge,
@@ -29,54 +37,6 @@ import type {
   Shooter,
   UnifiedSession,
 } from "@/components/dashboard/types";
-
-function fmtDot(iso: string | null, withYear = false): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return withYear
-    ? `${dd} · ${mm} · ${String(d.getFullYear()).slice(-2)}`
-    : `${dd} · ${mm}`;
-}
-
-function moduleBadgeClass(m: string | null): "spec" | "base" | "dry" | "flat" {
-  if (m === "speciales") return "spec";
-  if (m === "basique") return "base";
-  if (m === "dry_fire") return "dry";
-  return "flat";
-}
-
-const MOD_CHART_COLOR: Record<string, string> = {
-  speciales: "#b455e6",
-  basique: "#f5a623",
-  dry_fire: "#4f8ff0",
-};
-function modChartColor(m: string | null): string {
-  return (m && MOD_CHART_COLOR[m]) || "#888888";
-}
-
-function moduleShort(m: string | null): string {
-  if (m === "speciales") return "SPÉC";
-  if (m === "basique") return "BASE";
-  if (m === "dry_fire") return "DRY";
-  return moduleLabel(m).slice(0, 4).toUpperCase();
-}
-
-function fmtDM(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
-}
-function fmtSlash(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return `${String(d.getDate()).padStart(2, "0")} / ${String(
-    d.getMonth() + 1
-  ).padStart(2, "0")}`;
-}
 
 type ChartPt = {
   x: number;

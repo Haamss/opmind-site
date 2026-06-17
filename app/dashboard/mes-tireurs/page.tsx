@@ -410,12 +410,7 @@ export default function MesTireursPage() {
       }}
     >
       {/* Top header */}
-      <TopHeader
-        activeCount={activeShooters.length}
-        pendingCount={pendingShooters.length}
-        search={search}
-        onSearch={setSearch}
-      />
+      <TopHeader search={search} onSearch={setSearch} />
 
       <main style={{ padding: "32px 40px 80px", display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 32 }}>
         <div style={{ minWidth: 0 }}>
@@ -516,13 +511,9 @@ export default function MesTireursPage() {
 /* ──────────────  Top header  ────────────── */
 
 function TopHeader({
-  activeCount,
-  pendingCount,
   search,
   onSearch,
 }: {
-  activeCount: number;
-  pendingCount: number;
   search: string;
   onSearch: (v: string) => void;
 }) {
@@ -532,10 +523,10 @@ function TopHeader({
         position: "sticky",
         top: 0,
         height: 56,
-        background: SURFACE_DARK,
-        borderBottom: `1px solid ${LINE}`,
+        background: "var(--bg)",
+        borderBottom: "1px solid var(--line)",
         display: "grid",
-        gridTemplateColumns: "1fr 360px auto",
+        gridTemplateColumns: "1fr 360px",
         alignItems: "center",
         gap: 16,
         padding: "0 24px",
@@ -544,25 +535,17 @@ function TopHeader({
     >
       <div
         style={{
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: INK_DIM,
+          color: "var(--dim)",
         }}
       >
-        <span style={{ color: INK_FAINT }}>Dashboard</span>
-        <span style={{ margin: "0 8px", color: INK_FAINT }}>/</span>
-        <span style={{ color: INK }}>Mes Tireurs</span>
-        <span style={{ marginLeft: 12, color: INK_FAINT }}>·</span>
-        <span style={{ marginLeft: 12, color: OK }}>
-          {String(activeCount).padStart(2, "0")} Actifs
-        </span>
-        <span style={{ marginLeft: 8, color: INK_FAINT }}>·</span>
-        <span style={{ marginLeft: 8, color: WARN }}>
-          {String(pendingCount).padStart(2, "0")} Invitations
-        </span>
+        <span style={{ color: "var(--dim-2)" }}>Dashboard</span>
+        <span style={{ margin: "0 8px", color: "var(--dim-2)" }}>/</span>
+        <span style={{ color: "var(--ink)" }}>Mes Tireurs</span>
       </div>
       <input
         type="text"
@@ -570,11 +553,11 @@ function TopHeader({
         onChange={(e) => onSearch(e.target.value)}
         placeholder="Rechercher tireur, niveau, club..."
         style={{
-          background: BG,
-          border: `1px solid ${LINE}`,
-          color: INK,
+          background: "var(--bg)",
+          border: "1px solid var(--line)",
+          color: "var(--ink)",
           padding: "8px 12px",
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 12,
           fontWeight: 500,
           letterSpacing: "0.08em",
@@ -582,42 +565,6 @@ function TopHeader({
           outline: "none",
         }}
       />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          type="button"
-          style={{
-            background: "transparent",
-            border: `1px solid ${LINE}`,
-            color: INK,
-            padding: "8px 14px",
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          Exporter roster
-        </button>
-        <button
-          type="button"
-          style={{
-            background: ACCENT,
-            border: "none",
-            color: "#fff",
-            padding: "8px 14px",
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          + Ajouter un tireur
-        </button>
-      </div>
     </header>
   );
 }
@@ -632,56 +579,26 @@ function TitleSection({
   pendingCount: number;
 }) {
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          fontFamily: FONT_RAJ,
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          color: INK_DIM,
-        }}
-      >
-        <span
-          aria-hidden
-          style={{ width: 32, height: 1, background: ACCENT }}
-        />
-        Module · Coaching Roster
+    <div className={styles["page-head"]}>
+      <div>
+        <div className={styles.eyebrow}>Module · Coaching Roster</div>
+        <h1 className={styles.title}>
+          Mes <em>Tireurs.</em>
+        </h1>
+        <div className={styles["title-sub"]}>
+          Suivi de la progression et des séances de ta classe.
+        </div>
       </div>
-      <h1
-        style={{
-          margin: "16px 0 0 0",
-          fontFamily: FONT_RAJ,
-          fontWeight: 700,
-          fontSize: 64,
-          letterSpacing: "-0.02em",
-          textTransform: "uppercase",
-          lineHeight: 1,
-        }}
-      >
-        <span style={{ color: INK }}>Mes </span>
-        <span style={{ color: ACCENT_BRIGHT }}>Tireurs.</span>
-      </h1>
-      <p
-        style={{
-          marginTop: 16,
-          fontFamily: FONT_RAJ,
-          fontSize: 14,
-          fontWeight: 500,
-          letterSpacing: "0.04em",
-          color: INK_DIM,
-          maxWidth: 760,
-        }}
-      >
-        <span style={{ color: INK }}>{activeCount} tireurs actifs</span>{" "}
-        dans ta classe ·{" "}
-        <span style={{ color: WARN }}>{pendingCount} invitations</span>{" "}
-        en attente.
-      </p>
+      <div className={styles["head-meta"]}>
+        <div className={styles.stat}>
+          <span>Actifs</span>
+          <strong>{String(activeCount).padStart(2, "0")}</strong>
+        </div>
+        <div className={styles.stat}>
+          <span>Invitations</span>
+          <strong>{String(pendingCount).padStart(2, "0")}</strong>
+        </div>
+      </div>
     </div>
   );
 }

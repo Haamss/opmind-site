@@ -616,61 +616,43 @@ function StatsStrip({
   classAcc: number;
   sessionsPerWeek: number;
 }) {
-  const blocks: { label: string; value: string }[] = [
-    { label: "Tireurs actifs", value: String(activeCount) },
+  const blocks: { label: string; value: string; sub: string }[] = [
     {
-      label: "Score moyen classe (dernière séance)",
-      value: classScore > 0 ? classScore.toFixed(1) : "—",
+      label: "Tireurs actifs",
+      value: String(activeCount),
+      sub: "Σ roster lié · statut actif",
     },
-    { label: "Accuracy moy.", value: classAcc > 0 ? `${classAcc}%` : "—" },
-    { label: "Sessions / sem.", value: String(sessionsPerWeek) },
+    {
+      label: "Score moyen classe",
+      value: classScore > 0 ? classScore.toFixed(1) : "—",
+      sub: "Dernière séance · modules confondus",
+    },
+    {
+      label: "Accuracy moy.",
+      value: classAcc > 0 ? `${classAcc}%` : "—",
+      sub: "Dernière séance · tireurs actifs",
+    },
+    {
+      label: "Sessions / sem.",
+      value: String(sessionsPerWeek),
+      sub: "Moyenne sur 30 jours",
+    },
   ];
   return (
-    <div
-      style={{
-        marginTop: 32,
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: 12,
-      }}
-    >
+    <div className={styles["kpi-grid"]}>
       {blocks.map((b) => (
-        <div
-          key={b.label}
-          style={{
-            background: SURFACE,
-            border: `1px solid ${LINE}`,
-            padding: "18px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: FONT_RAJ,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: INK_DIM,
-            }}
-          >
-            {b.label}
+        <div key={b.label} className={styles.kpi}>
+          <div className={styles["kpi-head"]}>
+            <span className={styles["kpi-l"]}>{b.label}</span>
           </div>
-          <div
-            style={{
-              fontFamily: FONT_RAJ,
-              fontSize: 36,
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              color: INK,
-              lineHeight: 1,
-            }}
+          <span
+            className={`${styles["kpi-v"]} ${
+              b.value === "—" ? styles.empty : ""
+            }`}
           >
             {b.value}
-          </div>
+          </span>
+          <span className={styles["kpi-sub"]}>{b.sub}</span>
         </div>
       ))}
     </div>

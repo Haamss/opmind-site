@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSupabase } from "../../../lib/supabase";
 import { fetchUnifiedSessions } from "../../../components/dashboard/data";
 import { moduleLabel } from "../../../components/dashboard/modules";
@@ -284,6 +285,7 @@ function initials(name: string): string {
 type FilterKey = "all" | "A" | "B" | "C" | "D";
 
 export default function MesTireursPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileLite | null>(null);
   const [shooters, setShooters] = useState<DerivedShooter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -559,7 +561,11 @@ export default function MesTireursPage() {
               }}
             >
               {filtered.map((s) => (
-                <ShooterCard key={s.row.id} s={s} />
+                <ShooterCard
+                  key={s.row.id}
+                  s={s}
+                  onOpen={() => router.push(`/dashboard/shooter?id=${s.row.id}`)}
+                />
               ))}
               <InvitePlaceholder />
             </div>
@@ -573,7 +579,11 @@ export default function MesTireursPage() {
               }}
             >
               {filtered.map((s) => (
-                <ShooterListRow key={s.row.id} s={s} />
+                <ShooterListRow
+                  key={s.row.id}
+                  s={s}
+                  onOpen={() => router.push(`/dashboard/shooter?id=${s.row.id}`)}
+                />
               ))}
             </div>
           )}
@@ -1043,7 +1053,8 @@ function Filters({
 
 /* ──────────────  Shooter card  ────────────── */
 
-function ShooterCard({ s }: { s: DerivedShooter }) {
+function ShooterCard({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
+  const [hover, setHover] = useState(false);
   const objPct = Math.min(
     100,
     Math.round((s.objectif.current / s.objectif.target) * 100)
@@ -1053,13 +1064,30 @@ function ShooterCard({ s }: { s: DerivedShooter }) {
   const activityPct = Math.round((activeDays / totalDays) * 100);
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Ouvrir la fiche de ${s.row.name}`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
       style={{
         background: SURFACE,
-        border: `1px solid ${LINE}`,
+        border: `1px solid ${hover ? ACCENT : LINE}`,
         padding: 20,
         display: "flex",
         flexDirection: "column",
         gap: 16,
+        cursor: "pointer",
+        outline: "none",
+        transition: "border-color 120ms ease",
       }}
     >
       <CardHeader s={s} />
@@ -1550,17 +1578,35 @@ function InvitePlaceholder() {
 
 /* ──────────────  Shooter list row (alternate view)  ────────────── */
 
-function ShooterListRow({ s }: { s: DerivedShooter }) {
+function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
+  const [hover, setHover] = useState(false);
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Ouvrir la fiche de ${s.row.name}`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
       style={{
         background: SURFACE,
-        border: `1px solid ${LINE}`,
+        border: `1px solid ${hover ? ACCENT : LINE}`,
         padding: "12px 16px",
         display: "grid",
         gridTemplateColumns: "40px 1fr auto auto auto auto",
         alignItems: "center",
         gap: 16,
+        cursor: "pointer",
+        outline: "none",
+        transition: "border-color 120ms ease",
       }}
     >
       <div

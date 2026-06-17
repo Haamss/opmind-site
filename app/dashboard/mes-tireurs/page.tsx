@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { getSupabase } from "../../../lib/supabase";
 import { fetchUnifiedSessions } from "../../../components/dashboard/data";
 import { moduleLabel } from "../../../components/dashboard/modules";
+import { fmtDot } from "../../../components/dashboard/format";
+import { EmptyState } from "../../../components/dashboard/ui";
+import styles from "../../../components/dashboard/dashboard.module.css";
 import type {
   Shooter,
   UnifiedSession,
@@ -53,14 +56,6 @@ const AVATAR_PALETTE = [
   "#1ABC9C",
 ];
 
-const OBJECTIFS_POOL: { label: string; current: number; target: number }[] = [
-  { label: "HF > 6.0", current: 5.4, target: 6.0 },
-  { label: "Accuracy > 80%", current: 72, target: 80 },
-  { label: "Draw < 1.0s", current: 1.25, target: 1.0 },
-  { label: "Splits < 0.20s", current: 0.26, target: 0.2 },
-  { label: "Stage HHF > 75%", current: 68, target: 75 },
-];
-
 /* ──────────────  Types  ────────────── */
 
 // Types locaux InstructorShooterRow / ManualSessionRow supprimés :
@@ -85,14 +80,10 @@ type DerivedShooter = {
   lastHitFactor: number | null;
   sessionsCount: number;
   sessionsDelta: number;
-  activity30d: boolean[];
-  city: string;
   club: string;
   avatarColor: string;
-  objectif: { label: string; current: number; target: number };
   flag?: "stagne" | "rapide" | "contact";
   lastActivity: Date | null;
-  nextCoaching: Date | null;
 };
 
 /* ──────────────  Helpers  ────────────── */
@@ -115,28 +106,6 @@ function deriveLevelFromScore(score: number): "A" | "B" | "C" | "D" {
   if (score >= 60) return "C";
   return "D";
 }
-
-const CITY_POOL = [
-  "Marseille",
-  "Lyon",
-  "Paris",
-  "Bordeaux",
-  "Lille",
-  "Toulouse",
-  "Nantes",
-  "Strasbourg",
-];
-
-const CLUB_POOL = [
-  "TSV Marseille",
-  "Club Lyonnais",
-  "PSC Paris",
-  "Gironde Tir",
-  "Nord Tactique",
-  "Sud-Ouest IPSC",
-  "Atlantique Sport",
-  "Alsace Précision",
-];
 
 function deriveShooter(
   row: Shooter,
@@ -174,24 +143,6 @@ function deriveShooter(
     (s) => new Date(s.date || 0).getTime() >= cutoff
   ).length;
 
-  // Build 30-day activity bitmap deterministic per shooter
-  const sessionDays = new Set<string>();
-  for (const s of sessions) {
-    if (s.date) sessionDays.add(s.date.slice(0, 10));
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const activity30d: boolean[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const real = sessionDays.has(key);
-    // Sprinkle pseudo-activity so a 3-session shooter doesn't look empty
-    const synthetic = hash(seed + i) % 5 === 0;
-    activity30d.push(real || synthetic);
-  }
-
   const lastActivity = sessions
     .map((s) => new Date(s.date || 0))
     .filter((d) => !isNaN(d.getTime()))
@@ -206,15 +157,6 @@ function deriveShooter(
   else if (scoreDelta < -3) flag = "stagne";
   else if (scoreDelta > 5) flag = "rapide";
 
-  // Next coaching deterministic — half of shooters have one
-  let nextCoaching: Date | null = null;
-  if (hash(seed + "coach") % 2 === 0) {
-    const offset = (hash(seed + "co") % 6) + 1;
-    nextCoaching = new Date(today);
-    nextCoaching.setDate(today.getDate() + offset);
-    nextCoaching.setHours(9 + (hash(seed) % 9), 0, 0, 0);
-  }
-
   return {
     row,
     sessions,
@@ -227,14 +169,10 @@ function deriveShooter(
     lastHitFactor,
     sessionsCount: sessions.length,
     sessionsDelta,
-    activity30d,
-    city: pickFrom(CITY_POOL, seed + "city"),
-    club: row.unit || pickFrom(CLUB_POOL, seed + "club"),
+    club: row.unit || "",
     avatarColor: pickFrom(AVATAR_PALETTE, seed),
-    objectif: pickFrom(OBJECTIFS_POOL, seed + "obj"),
     flag,
     lastActivity,
-    nextCoaching,
   };
 }
 
@@ -250,24 +188,6 @@ function relTime(d: Date | null): string {
   if (days < 30) return `${days} j`;
   const months = Math.floor(days / 30);
   return `${months} mois`;
-}
-
-function formatShortDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  if (isNaN(date.getTime())) return "—";
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yy = String(date.getFullYear()).slice(-2);
-  return `${dd}-${mm}-${yy}`;
-}
-
-function formatCoachingDate(d: Date | null): string {
-  if (!d) return "—";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  return `${dd}-${mm} · ${hh}h`;
 }
 
 function initials(name: string): string {
@@ -405,21 +325,6 @@ export default function MesTireursPage() {
       0
     );
   }, [shooters]);
-  const totalShotsAll = useMemo(
-    () =>
-      shooters.reduce(
-        (sum, s) =>
-          sum +
-          s.sessions.reduce(
-            (a, b) => a + (Number(b.total_shots) || 0),
-            0
-          ),
-        0
-      ),
-    [shooters]
-  );
-  const hoursCoaching = Math.round((totalShotsAll / 100) * 10) / 10;
-  const hoursThisMonth = Math.round((hoursCoaching / 3) * 10) / 10;
   // Vraie moyenne sur l'échelle 0–100 (dernière séance de chaque tireur).
   // L'arrondi d'affichage est géré par toFixed(1).
   const classScore =
@@ -494,14 +399,9 @@ export default function MesTireursPage() {
     return Array.from(map.entries());
   }, [shooters]);
 
-  const sessionsCoachingThisWeek = shooters.filter(
-    (s) =>
-      s.nextCoaching &&
-      s.nextCoaching.getTime() < Date.now() + 7 * 86400000
-  ).length;
-
   return (
     <div
+      className={styles.page}
       style={{
         background: BG,
         minHeight: "100vh",
@@ -523,15 +423,11 @@ export default function MesTireursPage() {
           <TitleSection
             activeCount={activeShooters.length}
             pendingCount={pendingShooters.length}
-            coachingCount={sessionsCoachingThisWeek}
           />
 
           {/* Stats strip */}
           <StatsStrip
             activeCount={activeShooters.length}
-            shootersDelta={2}
-            hoursCoaching={hoursCoaching}
-            hoursThisMonth={hoursThisMonth}
             classScore={classScore}
             classAcc={classAcc}
             sessionsPerWeek={sessionsPerWeek}
@@ -548,9 +444,9 @@ export default function MesTireursPage() {
 
           {/* Grid */}
           {loading ? (
-            <EmptyState text="Chargement..." />
+            <EmptyState>Chargement...</EmptyState>
           ) : filtered.length === 0 ? (
-            <EmptyState text="Aucun tireur correspondant." />
+            <EmptyState>Aucun tireur correspondant.</EmptyState>
           ) : view === "grid" ? (
             <div
               style={{
@@ -731,11 +627,9 @@ function TopHeader({
 function TitleSection({
   activeCount,
   pendingCount,
-  coachingCount,
 }: {
   activeCount: number;
   pendingCount: number;
-  coachingCount: number;
 }) {
   return (
     <div>
@@ -786,9 +680,7 @@ function TitleSection({
         <span style={{ color: INK }}>{activeCount} tireurs actifs</span>{" "}
         dans ta classe ·{" "}
         <span style={{ color: WARN }}>{pendingCount} invitations</span>{" "}
-        en attente.{" "}
-        <span style={{ color: INK }}>{coachingCount} sessions</span>{" "}
-        de coaching programmées cette semaine.
+        en attente.
       </p>
     </div>
   );
@@ -798,58 +690,30 @@ function TitleSection({
 
 function StatsStrip({
   activeCount,
-  shootersDelta,
-  hoursCoaching,
-  hoursThisMonth,
   classScore,
   classAcc,
   sessionsPerWeek,
 }: {
   activeCount: number;
-  shootersDelta: number;
-  hoursCoaching: number;
-  hoursThisMonth: number;
   classScore: number;
   classAcc: number;
   sessionsPerWeek: number;
 }) {
-  const blocks: {
-    label: string;
-    value: string;
-    delta: { dir: "up" | "down" | "flat"; text: string };
-  }[] = [
-    {
-      label: "Tireurs actifs",
-      value: String(activeCount),
-      delta: { dir: "up", text: `+${shootersDelta} ce trimestre` },
-    },
-    {
-      label: "Heures coaching",
-      value: `${hoursCoaching} h`,
-      delta: { dir: "up", text: `${hoursThisMonth} h ce mois` },
-    },
+  const blocks: { label: string; value: string }[] = [
+    { label: "Tireurs actifs", value: String(activeCount) },
     {
       label: "Score moyen classe (dernière séance)",
       value: classScore > 0 ? classScore.toFixed(1) : "—",
-      delta: { dir: "flat", text: "modules confondus" },
     },
-    {
-      label: "Accuracy moy.",
-      value: classAcc > 0 ? `${classAcc}%` : "—",
-      delta: { dir: "up", text: "+4 pts" },
-    },
-    {
-      label: "Sessions / sem.",
-      value: String(sessionsPerWeek),
-      delta: { dir: "down", text: "-86 ce mois" },
-    },
+    { label: "Accuracy moy.", value: classAcc > 0 ? `${classAcc}%` : "—" },
+    { label: "Sessions / sem.", value: String(sessionsPerWeek) },
   ];
   return (
     <div
       style={{
         marginTop: 32,
         display: "grid",
-        gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
         gap: 12,
       }}
     >
@@ -889,19 +753,6 @@ function StatsStrip({
             }}
           >
             {b.value}
-          </div>
-          <div
-            style={{
-              fontFamily: FONT_RAJ,
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: b.delta.dir === "down" ? ACCENT_BRIGHT : OK,
-              marginTop: 2,
-            }}
-          >
-            {b.delta.dir === "down" ? "↓" : "↑"} {b.delta.text}
           </div>
         </div>
       ))}
@@ -1055,13 +906,6 @@ function Filters({
 
 function ShooterCard({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
   const [hover, setHover] = useState(false);
-  const objPct = Math.min(
-    100,
-    Math.round((s.objectif.current / s.objectif.target) * 100)
-  );
-  const activeDays = s.activity30d.filter(Boolean).length;
-  const totalDays = s.activity30d.length;
-  const activityPct = Math.round((activeDays / totalDays) * 100);
   return (
     <div
       role="button"
@@ -1092,16 +936,6 @@ function ShooterCard({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
     >
       <CardHeader s={s} />
       <CardStats s={s} />
-      <ObjectifBar
-        label={s.objectif.label}
-        current={s.objectif.current}
-        target={s.objectif.target}
-        pct={objPct}
-      />
-      <ActivityBars
-        bars={s.activity30d}
-        activityPct={activityPct}
-      />
       <CardFooter s={s} />
       <CardFlag flag={s.flag} />
     </div>
@@ -1173,7 +1007,9 @@ function CardHeader({ s }: { s: DerivedShooter }) {
             color: INK_DIM,
           }}
         >
-          {s.club} · {s.city} · Inscrit {formatShortDate(s.row.linked_at)}
+          {[s.club, `Inscrit ${fmtDot(s.row.linked_at ?? null, true)}`]
+            .filter(Boolean)
+            .join(" · ")}
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, alignSelf: "center" }}>
@@ -1332,106 +1168,6 @@ function CardStats({ s }: { s: DerivedShooter }) {
   );
 }
 
-function ObjectifBar({
-  label,
-  current,
-  target,
-  pct,
-}: {
-  label: string;
-  current: number;
-  target: number;
-  pct: number;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontFamily: FONT_RAJ,
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-          color: INK_DIM,
-        }}
-      >
-        <span>Objectif · {label}</span>
-        <span style={{ color: INK }}>
-          {current} / {target}
-        </span>
-      </div>
-      <div
-        style={{
-          height: 6,
-          background: LINE,
-          position: "relative",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            width: `${pct}%`,
-            background: ACCENT,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ActivityBars({
-  bars,
-  activityPct,
-}: {
-  bars: boolean[];
-  activityPct: number;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontFamily: FONT_RAJ,
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-          color: INK_DIM,
-        }}
-      >
-        <span>Activité 30j</span>
-        <span style={{ color: activityPct >= 50 ? OK : INK_DIM }}>
-          {activityPct}%
-        </span>
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${bars.length}, 1fr)`,
-          gap: 2,
-          height: 18,
-        }}
-      >
-        {bars.map((on, i) => (
-          <div
-            key={i}
-            style={{
-              background: on ? ACCENT_BRIGHT : LINE,
-              height: "100%",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CardFooter({ s }: { s: DerivedShooter }) {
   return (
     <div
@@ -1449,12 +1185,6 @@ function CardFooter({ s }: { s: DerivedShooter }) {
       }}
     >
       <span>Dernière · {relTime(s.lastActivity)}</span>
-      <span>
-        Coaching ·{" "}
-        <span style={{ color: s.nextCoaching ? INK : INK_FAINT }}>
-          {s.nextCoaching ? formatCoachingDate(s.nextCoaching) : "—"}
-        </span>
-      </span>
     </div>
   );
 }
@@ -1631,7 +1361,7 @@ function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }
           {s.row.name}
         </span>
         <span style={{ fontFamily: FONT_RAJ, fontSize: 10, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: INK_DIM }}>
-          {s.club} · {s.city}
+          {s.club || "—"}
         </span>
       </div>
       <span
@@ -1863,7 +1593,7 @@ function InvitationsPanel({ shooters }: { shooters: DerivedShooter[] }) {
                   }}
                 >
                   {s.row.specialite || "—"} ·{" "}
-                  {formatShortDate(s.row.linked_at)}
+                  {fmtDot(s.row.linked_at ?? null, true)}
                 </span>
               </div>
               <button
@@ -2059,29 +1789,7 @@ function ActivityFeedPanel({
   );
 }
 
-/* ──────────────  Empty state + icons  ────────────── */
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        marginTop: 24,
-        padding: "40px 16px",
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        fontFamily: FONT_RAJ,
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: "0.14em",
-        textTransform: "uppercase",
-        color: INK_DIM,
-        textAlign: "center",
-      }}
-    >
-      {text}
-    </div>
-  );
-}
+/* ──────────────  Icons  ────────────── */
 
 function IconGrid() {
   return (

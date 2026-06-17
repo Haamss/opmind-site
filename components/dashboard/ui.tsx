@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { AssignmentStatus, ShooterStatus } from "./types";
 
@@ -170,6 +171,40 @@ export function AssignmentTriad({
         {overdue}
       </span>
     </div>
+  );
+}
+
+export function Breadcrumb({
+  items,
+}: {
+  items: { label: string; href?: string }[];
+}) {
+  return (
+    <nav
+      aria-label="Fil d'ariane"
+      className="mb-6 flex flex-wrap items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.22em]"
+    >
+      {items.map((it, i) => {
+        const last = i === items.length - 1;
+        return (
+          <span key={i} className="flex items-center gap-2">
+            {it.href && !last ? (
+              <Link
+                href={it.href}
+                className="text-[#666] transition-colors hover:text-white"
+              >
+                {it.label}
+              </Link>
+            ) : (
+              <span className={last ? "text-white" : "text-[#666]"}>
+                {it.label}
+              </span>
+            )}
+            {!last && <span className="text-[#333]">/</span>}
+          </span>
+        );
+      })}
+    </nav>
   );
 }
 

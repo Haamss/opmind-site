@@ -30,6 +30,7 @@ import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
   AssignmentStatusBadge,
+  Breadcrumb,
   Card,
   EmptyState,
   KpiTile,
@@ -214,6 +215,14 @@ function ShooterDetail() {
 
   return (
     <div className="px-6 py-8 md:px-10 md:py-10">
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Mes Tireurs", href: "/dashboard/mes-tireurs" },
+          { label: shooter?.name ?? "…" },
+        ]}
+      />
+
       <button
         type="button"
         onClick={() => router.back()}
@@ -450,12 +459,7 @@ function ShooterDetail() {
 
           {/* ASSIGNMENTS */}
           <div className="mb-10">
-            <div className="mb-5">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-[#7A0000]">04</p>
-              <h2 className="mt-2 font-mono text-xl font-bold uppercase tracking-tight text-white md:text-2xl">
-                Assignations
-              </h2>
-            </div>
+            <SectionTitle eyebrow="04" title="Assignations" />
 
             <Link
               href={`/dashboard/shooter/session/new/?id=${shooter.id}`}

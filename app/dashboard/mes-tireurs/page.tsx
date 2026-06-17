@@ -31,6 +31,9 @@ const LINE = "#1a1a1a";
 const FONT_RAJ =
   "var(--font-rajdhani), 'Rajdhani', system-ui, sans-serif";
 
+// Grille partagée en-tête + lignes de la vue liste (.st-head / .st-row).
+const LIST_COLS = "minmax(0, 1.6fr) 100px 0.8fr 0.8fr 96px";
+
 const LEVEL_PALETTE: Record<string, string> = {
   A: ACCENT_BRIGHT,
   B: WARN,
@@ -461,14 +464,17 @@ export default function MesTireursPage() {
               <InvitePlaceholder />
             </div>
           ) : (
-            <div
-              style={{
-                marginTop: 20,
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
-            >
+            <div className={styles.panel} style={{ marginTop: 20 }}>
+              <div
+                className={styles["st-head"]}
+                style={{ gridTemplateColumns: LIST_COLS }}
+              >
+                <span>Tireur</span>
+                <span>Niveau</span>
+                <span>Score</span>
+                <span>Précision</span>
+                <span>Dernière</span>
+              </div>
               {filtered.map((s) => (
                 <ShooterListRow
                   key={s.row.id}
@@ -887,31 +893,6 @@ function CardHeader({ s }: { s: DerivedShooter }) {
   );
 }
 
-function IconButton({
-  children,
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      type="button"
-      {...rest}
-      style={{
-        background: "transparent",
-        border: `1px solid ${LINE}`,
-        color: INK_DIM,
-        width: 28,
-        height: 28,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function CardStats({ s }: { s: DerivedShooter }) {
   const stats: {
     label: string;
@@ -1168,7 +1149,6 @@ function InvitePlaceholder() {
 /* ──────────────  Shooter list row (alternate view)  ────────────── */
 
 function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
-  const [hover, setHover] = useState(false);
   return (
     <div
       role="button"
@@ -1181,70 +1161,30 @@ function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }
           onOpen();
         }
       }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocus={() => setHover(true)}
-      onBlur={() => setHover(false)}
-      style={{
-        background: SURFACE,
-        border: `1px solid ${hover ? ACCENT : LINE}`,
-        padding: "12px 16px",
-        display: "grid",
-        gridTemplateColumns: "40px 1fr auto auto auto auto",
-        alignItems: "center",
-        gap: 16,
-        cursor: "pointer",
-        outline: "none",
-        transition: "border-color 120ms ease",
-      }}
+      className={`${styles["st-row"]} ${styles["row-link"]}`}
+      style={{ gridTemplateColumns: LIST_COLS }}
     >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          background: s.avatarColor,
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: FONT_RAJ,
-          fontSize: 12,
-          fontWeight: 700,
-        }}
-      >
-        {initials(s.row.name)}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <span style={{ fontFamily: FONT_RAJ, fontSize: 14, fontWeight: 700, textTransform: "uppercase", color: INK }}>
-          {s.row.name}
-        </span>
-        <span style={{ fontFamily: FONT_RAJ, fontSize: 10, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: INK_DIM }}>
-          {s.club || "—"}
-        </span>
+      <div className={styles.nm}>
+        {s.row.name}
+        <span className={styles.s}>{s.club || "—"}</span>
       </div>
       <span
+        className={styles.badge}
         style={{
-          fontFamily: FONT_RAJ,
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          color: "#fff",
-          background: LEVEL_PALETTE[s.level],
-          padding: "2px 6px",
-          borderRadius: 2,
+          color: LEVEL_PALETTE[s.level],
+          borderColor: LEVEL_PALETTE[s.level],
+          justifySelf: "start",
         }}
       >
         {LEVEL_LABELS[s.level]}
       </span>
-      <span style={{ fontFamily: FONT_RAJ, fontSize: 14, fontWeight: 700, color: INK }}>
-        Score {s.lastScore > 0 ? s.lastScore.toFixed(1) : "—"}
+      <span className={styles.score}>
+        {s.lastScore > 0 ? s.lastScore.toFixed(1) : "—"}
       </span>
-      <span style={{ fontFamily: FONT_RAJ, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: INK_DIM, textTransform: "uppercase" }}>
-        {relTime(s.lastActivity)}
+      <span className={styles.num}>
+        {s.accuracy > 0 ? `${s.accuracy}%` : "—"}
       </span>
-      <IconButton aria-label="Détails"><IconArrowRight /></IconButton>
+      <span className={styles.date}>{relTime(s.lastActivity)}</span>
     </div>
   );
 }
@@ -1667,15 +1607,6 @@ function IconList() {
       <line x1="4" y1="6" x2="20" y2="6" />
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="18" x2="20" y2="18" />
-    </svg>
-  );
-}
-
-function IconArrowRight() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <polyline points="12 5 19 12 12 19" />
     </svg>
   );
 }

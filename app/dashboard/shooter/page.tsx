@@ -3,16 +3,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { getSupabase } from "@/lib/supabase";
 import {
   fetchAssignments,
@@ -24,20 +14,14 @@ import {
   type ModuleSessionRow,
   type SessionFeedbackRow,
 } from "@/components/dashboard/data";
-import { moduleColor, moduleLabel } from "@/components/dashboard/modules";
+import { moduleLabel } from "@/components/dashboard/modules";
 import styles from "./fiche.module.css";
-import { ProgressionChart } from "@/components/dashboard/ProgressionChart";
 import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
   AssignmentStatusBadge,
   Breadcrumb,
-  Card,
   EmptyState,
-  KpiTile,
-  ProfileBadge,
-  SectionTitle,
-  ShooterStatusBadge,
 } from "@/components/dashboard/ui";
 import type {
   Assignment,
@@ -1327,21 +1311,5 @@ function FeedbackBlock({ feedback }: { feedback: SessionFeedbackRow }) {
         </div>
       )}
     </div>
-  );
-}
-
-function Th({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th
-      className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#888] ${className}`}
-    >
-      {children}
-    </th>
   );
 }

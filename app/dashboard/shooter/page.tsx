@@ -25,6 +25,7 @@ import {
   type SessionFeedbackRow,
 } from "@/components/dashboard/data";
 import { moduleColor, moduleLabel } from "@/components/dashboard/modules";
+import styles from "./fiche.module.css";
 import { ProgressionChart } from "@/components/dashboard/ProgressionChart";
 import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
@@ -44,6 +45,24 @@ import type {
   Shooter,
   UnifiedSession,
 } from "@/components/dashboard/types";
+
+function fmtDot(iso: string | null, withYear = false): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return withYear
+    ? `${dd} · ${mm} · ${String(d.getFullYear()).slice(-2)}`
+    : `${dd} · ${mm}`;
+}
+
+function moduleBadgeClass(m: string | null): "spec" | "base" | "dry" | "flat" {
+  if (m === "speciales") return "spec";
+  if (m === "basique") return "base";
+  if (m === "dry_fire") return "dry";
+  return "flat";
+}
 
 export default function ShooterPage() {
   return (
@@ -71,6 +90,8 @@ function ShooterDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // Horloge figée au mount (initializer pur côté React → pas de lint purity).
+  const [now] = useState(() => Date.now());
   const [linkedSession, setLinkedSession] = useState<ModuleSessionRow | null>(
     null
   );
@@ -164,6 +185,7 @@ function ShooterDetail() {
     }
     const bestScore = bestSession ? bestSession.normalized_score : null;
     const bestModule = bestSession?.module ?? null;
+    const bestDate = bestSession?.date ?? null;
 
     // Headline = DERNIÈRE séance (un seul module). Jamais de moyenne inter-modules.
     // sessions triées par date desc (fetchUnifiedSessions) → [0] = dernière.
@@ -175,16 +197,26 @@ function ShooterDetail() {
     const lastAccuracy =
       last && typeof last.accuracy === "number" ? last.accuracy : null;
     const lastModule = last?.module ?? null;
+    const lastDate = last?.date ?? null;
+
+    // Vrais "30 derniers jours" via horloge figée au mount (now).
+    const sessions30d = sessions.filter((s) => {
+      const t = +new Date(s.date);
+      return !isNaN(t) && t >= now - 30 * 86400000;
+    }).length;
 
     return {
       lastScore,
       lastAccuracy,
       lastModule,
+      lastDate,
       bestScore,
       bestModule,
+      bestDate,
       count: sessions.length,
+      sessions30d,
     };
-  }, [sessions]);
+  }, [sessions, now]);
 
   const moduleBreakdown = useMemo(() => {
     const counts = new Map<string, number>();
@@ -214,7 +246,7 @@ function ShooterDetail() {
   }
 
   return (
-    <div className="px-6 py-8 md:px-10 md:py-10">
+    <div className={`${styles.page} px-6 py-8 md:px-10 md:py-10`}>
       <Breadcrumb
         items={[
           { label: "Dashboard", href: "/dashboard" },
@@ -226,12 +258,12 @@ function ShooterDetail() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="mb-6 inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#888] transition-colors hover:text-white"
+        className={styles["back-link"]}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
+        <svg viewBox="0 0 14 14" fill="none">
+          <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" />
         </svg>
-        Retour
+        Retour aux tireurs
       </button>
 
       {error && (
@@ -245,60 +277,176 @@ function ShooterDetail() {
       ) : !shooter ? null : (
         <>
           {/* HEADER */}
-          <Card className="mb-8 p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <ProfileBadge pro={isPro(shooter)} />
-                  <ShooterStatusBadge status={shooter.status} />
-                </div>
-                <h1 className="mt-3 font-mono text-3xl font-bold uppercase tracking-tight text-white md:text-4xl">
-                  {shooter.name}
-                </h1>
-                <p className="mt-2 font-mono text-xs uppercase tracking-[0.22em] text-[#888]">
-                  {[shooter.grade, shooter.unit || shooter.specialite]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
-                </p>
+          <div className={styles["page-head"]}>
+            <div>
+              <div className={styles.eyebrow}>Module · Fiche tireur</div>
+              <div className={styles["badge-row"]}>
+                {isPro(shooter) && (
+                  <span className={`${styles.badge} ${styles.pro}`}>Pro</span>
+                )}
+                <span
+                  className={`${styles.badge} ${
+                    shooter.status === "active" ? styles.actif : ""
+                  }`}
+                >
+                  {shooter.status === "active" ? "Actif" : "En attente"}
+                </span>
               </div>
-              <div className="text-left md:text-right">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#666]">
-                  Lié depuis
-                </p>
-                <p className="mt-1 font-mono text-sm text-white">{formatDate(shooter.linked_at)}</p>
+              <div className={styles["id-line"]}>
+                <div className={styles["id-avatar"]}>
+                  {shooter.name.charAt(0).toUpperCase()}
+                </div>
+                <h1 className={styles.title}>{shooter.name}</h1>
+              </div>
+              <div className={styles["title-sub"]}>
+                {[shooter.grade, shooter.unit].filter(Boolean).join(" · ") || "—"}
+                {shooter.specialite && (
+                  <>
+                    {" · "}
+                    <strong>{shooter.specialite}</strong>
+                  </>
+                )}
               </div>
             </div>
-            {shooter.instructor_notes && (
-              <div className="mt-5 border-l-2 border-[#7A0000] bg-black px-4 py-3">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#666]">
-                  Notes instructeur
-                </p>
-                <p className="mt-2 font-mono text-sm text-[#aaa]">{shooter.instructor_notes}</p>
+            <div className={styles["head-meta"]}>
+              <div className={styles.stat}>
+                <span>Lié depuis</span>
+                <strong>{formatDate(shooter.linked_at)}</strong>
               </div>
-            )}
-          </Card>
+            </div>
+          </div>
 
-          {/* STATS */}
-          <div className="mb-10 grid gap-3 md:grid-cols-4">
-            <KpiTile label="Sessions" value={stats.count} />
-            <KpiTile
-              label="Dernière séance"
-              value={stats.lastScore !== null ? stats.lastScore.toFixed(1) : "—"}
-              hint={stats.lastModule ? moduleLabel(stats.lastModule) : undefined}
-            />
-            <KpiTile
-              label="Meilleur score"
-              value={stats.bestScore !== null ? stats.bestScore.toFixed(1) : "—"}
-              hint={stats.bestModule ? moduleLabel(stats.bestModule) : undefined}
-            />
-            <KpiTile
-              label="Précision (dernière)"
-              value={
-                stats.lastAccuracy !== null
-                  ? `${(stats.lastAccuracy * 100).toFixed(0)}%`
-                  : "—"
-              }
-            />
+          {/* NOTES INSTRUCTEUR */}
+          <div className={styles.panel} style={{ marginBottom: 32 }}>
+            <div className={styles["panel-head"]}>
+              <span className={styles.title}>Notes instructeur</span>
+              <span>Privé · visible coach</span>
+            </div>
+            <div className={styles.notes}>
+              <span className={styles.tag}>Profil</span>
+              <div className={styles.chips}>
+                <span className={styles.chip}>
+                  <span className={styles.k}>Origine</span>{" "}
+                  {shooter.shooter_id ? "App" : "Manuel"}
+                </span>
+                <span className={styles.chip}>
+                  <span className={styles.k}>Profil</span>{" "}
+                  {isPro(shooter) ? "Pro" : "Civil"}
+                </span>
+                {shooter.specialite && (
+                  <span className={styles.chip}>
+                    <span className={styles.k}>Rôle</span> {shooter.specialite}
+                  </span>
+                )}
+                {(shooter.grade || shooter.unit) && (
+                  <span className={styles.chip}>
+                    <span className={styles.k}>Unité</span>{" "}
+                    {[shooter.grade, shooter.unit].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </div>
+              {shooter.instructor_notes && (
+                <p className={styles["note-free"]}>{shooter.instructor_notes}</p>
+              )}
+            </div>
+          </div>
+
+          {/* KPI GRID */}
+          <div className={styles["kpi-grid"]}>
+            {/* Sessions */}
+            <div className={styles.kpi}>
+              <div className={styles["kpi-head"]}>
+                <span className={styles["kpi-l"]}>Sessions</span>
+                {stats.sessions30d > 0 ? (
+                  <span className={`${styles["kpi-badge"]} ${styles.up}`}>
+                    ↗ +{stats.sessions30d} / 30j
+                  </span>
+                ) : (
+                  <span className={`${styles["kpi-badge"]} ${styles.flat}`}>—</span>
+                )}
+              </div>
+              <span className={styles["kpi-v"]}>{stats.count}</span>
+              <span className={styles["kpi-sub"]}>Σ depuis liaison</span>
+            </div>
+
+            {/* Dernière séance */}
+            <div className={styles.kpi}>
+              <div className={styles["kpi-head"]}>
+                <span className={styles["kpi-l"]}>Dernière séance</span>
+                <span className={`${styles["kpi-badge"]} ${styles.flat}`}>
+                  {stats.lastModule ? moduleLabel(stats.lastModule) : "—"}
+                </span>
+              </div>
+              <span
+                className={`${styles["kpi-v"]} ${
+                  stats.lastScore === null ? styles.empty : ""
+                }`}
+              >
+                {stats.lastScore !== null ? stats.lastScore.toFixed(1) : "—"}
+              </span>
+              <span className={styles["kpi-sub"]}>
+                {stats.lastDate
+                  ? `${
+                      stats.lastScore === null
+                        ? "Non scorée"
+                        : moduleLabel(stats.lastModule)
+                    } · ${fmtDot(stats.lastDate)}`
+                  : "Aucune séance"}
+              </span>
+            </div>
+
+            {/* Meilleur score */}
+            <div className={styles.kpi}>
+              <div className={styles["kpi-head"]}>
+                <span className={styles["kpi-l"]}>Meilleur score</span>
+                {stats.bestModule && (
+                  <span
+                    className={`${styles["kpi-badge"]} ${
+                      styles[moduleBadgeClass(stats.bestModule)]
+                    }`}
+                  >
+                    {moduleLabel(stats.bestModule)}
+                  </span>
+                )}
+              </div>
+              <span
+                className={`${styles["kpi-v"]} ${
+                  stats.bestScore !== null ? styles.hl : styles.empty
+                }`}
+              >
+                {stats.bestScore !== null ? stats.bestScore.toFixed(1) : "—"}
+              </span>
+              <span className={styles["kpi-sub"]}>
+                {stats.bestDate ? `PR · ${fmtDot(stats.bestDate, true)}` : "—"}
+              </span>
+            </div>
+
+            {/* Précision (dernière) */}
+            <div className={styles.kpi}>
+              <div className={styles["kpi-head"]}>
+                <span className={styles["kpi-l"]}>Précision (dernière)</span>
+                <span className={`${styles["kpi-badge"]} ${styles.flat}`}>—</span>
+              </div>
+              <span
+                className={`${styles["kpi-v"]} ${
+                  stats.lastAccuracy === null ? styles.empty : ""
+                }`}
+              >
+                {stats.lastAccuracy !== null ? (
+                  <>
+                    {(stats.lastAccuracy * 100).toFixed(0)}
+                    <span className={styles.unit}>%</span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </span>
+              <span className={styles["kpi-sub"]}>
+                {stats.lastAccuracy !== null
+                  ? "Dernière séance"
+                  : "En attente de scoring"}
+              </span>
+            </div>
           </div>
 
           {/* PROGRESSION */}

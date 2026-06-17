@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 .claude/
 .claude/
+
+# maquette de référence (ne pas committer)
+/fiche-tireur-reference.html

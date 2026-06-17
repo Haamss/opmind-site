@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed, Rajdhani } from "next/font/google";
+import {
+  Barlow,
+  Barlow_Condensed,
+  Rajdhani,
+  Antonio,
+  Geist,
+  JetBrains_Mono,
+} from "next/font/google";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -18,6 +25,27 @@ const barlowCondensed = Barlow_Condensed({
 
 const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const antonio = Antonio({
+  variable: "--font-antonio",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -69,7 +97,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${barlow.variable} ${barlowCondensed.variable} ${rajdhani.variable}`}
+      className={`${barlow.variable} ${barlowCondensed.variable} ${rajdhani.variable} ${antonio.variable} ${geist.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         <meta httpEquiv="Content-Security-Policy" content={CSP} />

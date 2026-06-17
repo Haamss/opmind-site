@@ -64,6 +64,45 @@ function moduleBadgeClass(m: string | null): "spec" | "base" | "dry" | "flat" {
   return "flat";
 }
 
+const MOD_CHART_COLOR: Record<string, string> = {
+  speciales: "#b455e6",
+  basique: "#f5a623",
+  dry_fire: "#4f8ff0",
+};
+function modChartColor(m: string | null): string {
+  return (m && MOD_CHART_COLOR[m]) || "#888888";
+}
+
+function moduleShort(m: string | null): string {
+  if (m === "speciales") return "SPÉC";
+  if (m === "basique") return "BASE";
+  if (m === "dry_fire") return "DRY";
+  return moduleLabel(m).slice(0, 4).toUpperCase();
+}
+
+function fmtDM(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+}
+function fmtSlash(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return `${String(d.getDate()).padStart(2, "0")} / ${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
+type ChartPt = {
+  x: number;
+  y: number;
+  score: number;
+  module: string | null;
+  color: string;
+  date: string;
+};
+
 export default function ShooterPage() {
   return (
     <Suspense
@@ -217,6 +256,123 @@ function ShooterDetail() {
       sessions30d,
     };
   }, [sessions, now]);
+
+  const chart = useMemo(() => {
+    const scored = sessions
+      .filter((s) => typeof s.normalized_score === "number")
+      .slice()
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+    const n = scored.length;
+    const X0 = 80, X1 = 1080, YT = 40, YB = 280;
+    const xAt = (i: number) =>
+      n <= 1 ? (X0 + X1) / 2 : X0 + (i * (X1 - X0)) / (n - 1);
+    const yAt = (sc: number) => YB - (sc * (YB - YT)) / 100;
+    const pts: ChartPt[] = scored.map((s, i) => ({
+      x: +xAt(i).toFixed(1),
+      y: +yAt(s.normalized_score as number).toFixed(1),
+      score: s.normalized_score as number,
+      module: s.module,
+      color: modChartColor(s.module),
+      date: s.date,
+    }));
+
+    // 1 polyline par module (points du module reliés chronologiquement).
+    const byModule = new Map<string, ChartPt[]>();
+    pts.forEach((p) => {
+      const k = p.module ?? "autre";
+      const arr = byModule.get(k);
+      if (arr) arr.push(p);
+      else byModule.set(k, [p]);
+    });
+    const series = Array.from(byModule.entries()).map(([m, arr]) => ({
+      module: m,
+      color: modChartColor(m),
+      polyline: arr.map((p) => `${p.x},${p.y}`).join(" "),
+    }));
+
+    // PR = meilleur score.
+    let prIndex = -1;
+    pts.forEach((p, i) => {
+      if (prIndex === -1 || p.score > pts[prIndex].score) prIndex = i;
+    });
+    const pr = prIndex >= 0 ? pts[prIndex] : null;
+
+    // Aire = remplissage sous la ligne du module dominant (celui du PR).
+    let area = "";
+    let areaColor: string | null = null;
+    if (pr) {
+      const arr = byModule.get(pr.module ?? "autre") ?? [];
+      if (arr.length >= 2) {
+        area =
+          `M ${arr[0].x},${arr[0].y} ` +
+          arr.slice(1).map((p) => `L ${p.x},${p.y} `).join("") +
+          `L ${arr[arr.length - 1].x},${YB} L ${arr[0].x},${YB} Z`;
+        areaColor = modChartColor(pr.module);
+      }
+    }
+
+    // Tendance (régression linéaire index → score).
+    let trend: { x1: number; y1: number; x2: number; y2: number } | null = null;
+    let delta: number | null = null;
+    if (n >= 2) {
+      const mx = (n - 1) / 2;
+      const my = pts.reduce((s, p) => s + p.score, 0) / n;
+      let num = 0, den = 0;
+      pts.forEach((p, i) => {
+        num += (i - mx) * (p.score - my);
+        den += (i - mx) ** 2;
+      });
+      const slope = den ? num / den : 0;
+      const intercept = my - slope * mx;
+      trend = {
+        x1: xAt(0),
+        y1: +yAt(intercept).toFixed(1),
+        x2: xAt(n - 1),
+        y2: +yAt(intercept + slope * (n - 1)).toFixed(1),
+      };
+      delta = Math.round(pts[n - 1].score - pts[0].score);
+    }
+
+    // Callout PR : à droite du point sauf si trop près du bord → à gauche.
+    let callout:
+      | { boxX: number; boxY: number; boxW: number; boxH: number }
+      | null = null;
+    if (pr) {
+      const boxW = 96, boxH = 38, gap = 14;
+      const toRight = pr.x + gap + boxW <= X1;
+      const boxX = toRight ? pr.x + gap : pr.x - gap - boxW;
+      let boxY = pr.y - boxH / 2;
+      if (boxY < 8) boxY = 8;
+      if (boxY > 340 - boxH - 8) boxY = 340 - boxH - 8;
+      callout = {
+        boxX: +boxX.toFixed(1),
+        boxY: +boxY.toFixed(1),
+        boxW,
+        boxH,
+      };
+    }
+
+    const labelStep = n > 7 ? Math.ceil(n / 6) : 1;
+    const modulesPresent = Array.from(
+      new Set(scored.map((s) => s.module ?? "autre"))
+    );
+    return {
+      pts,
+      series,
+      pr,
+      prIndex,
+      area,
+      areaColor,
+      trend,
+      delta,
+      n,
+      labelStep,
+      modulesPresent,
+      firstDate: pts[0]?.date ?? null,
+      lastDate: pts[n - 1]?.date ?? null,
+      callout,
+    };
+  }, [sessions]);
 
   const moduleBreakdown = useMemo(() => {
     const counts = new Map<string, number>();
@@ -449,17 +605,226 @@ function ShooterDetail() {
             </div>
           </div>
 
-          {/* PROGRESSION */}
-          <div className="mb-10">
-            <SectionTitle eyebrow="01" title="Progression" />
-            {sessions.length === 0 ? (
-              <EmptyState>Aucune session enregistrée</EmptyState>
-            ) : (
-              <Card className="p-4">
-                <ProgressionChart sessions={sessions} height={320} />
-              </Card>
-            )}
+          {/* SECTION 01 — PROGRESSION */}
+          <div className={styles["section-head"]}>
+            <h2>
+              <span className={styles.num}>01</span> Progression{" "}
+              <em>longitudinale.</em>
+            </h2>
+            <div className={styles.meta}>
+              {stats.count} sessions
+              {chart.firstDate && chart.lastDate && (
+                <>
+                  {" · "}
+                  <strong>
+                    {fmtDM(chart.firstDate)} → {fmtDM(chart.lastDate)}
+                  </strong>
+                </>
+              )}
+            </div>
           </div>
+          {chart.n === 0 ? (
+            <div
+              className={styles.panel}
+              style={{ marginBottom: 32, padding: 24 }}
+            >
+              <EmptyState>Aucune séance scorée à tracer</EmptyState>
+            </div>
+          ) : (
+            <div className={`${styles.panel} ${styles["main-chart"]}`}>
+              <svg
+                className={styles["main-chart-svg"]}
+                viewBox="0 0 1100 340"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  {chart.areaColor && (
+                    <linearGradient
+                      id="ficheAreaGrad"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={chart.areaColor}
+                        stopOpacity="0.22"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={chart.areaColor}
+                        stopOpacity="0"
+                      />
+                    </linearGradient>
+                  )}
+                </defs>
+                <g stroke="rgba(235,229,210,0.06)" strokeWidth="1">
+                  <line x1="60" y1="40" x2="1080" y2="40" />
+                  <line x1="60" y1="100" x2="1080" y2="100" />
+                  <line x1="60" y1="160" x2="1080" y2="160" />
+                  <line x1="60" y1="220" x2="1080" y2="220" />
+                  <line x1="60" y1="280" x2="1080" y2="280" />
+                </g>
+                <g
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    fill: "rgba(235,229,210,0.32)",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  <text x="46" y="44" textAnchor="end">100</text>
+                  <text x="46" y="104" textAnchor="end">75</text>
+                  <text x="46" y="164" textAnchor="end">50</text>
+                  <text x="46" y="224" textAnchor="end">25</text>
+                  <text x="46" y="284" textAnchor="end">0</text>
+                </g>
+                {chart.area && (
+                  <path d={chart.area} fill="url(#ficheAreaGrad)" stroke="none" />
+                )}
+                {chart.trend && (
+                  <line
+                    x1={chart.trend.x1}
+                    y1={chart.trend.y1}
+                    x2={chart.trend.x2}
+                    y2={chart.trend.y2}
+                    stroke="rgba(232,74,58,0.55)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                  />
+                )}
+                {chart.series.map((s) => (
+                  <polyline
+                    key={s.module}
+                    points={s.polyline}
+                    stroke={s.color}
+                    strokeWidth="2.2"
+                    fill="none"
+                  />
+                ))}
+                {chart.pts.map((p, i) => {
+                  const isPr = i === chart.prIndex;
+                  return (
+                    <circle
+                      key={i}
+                      cx={p.x}
+                      cy={p.y}
+                      r={isPr ? 7 : 5}
+                      fill={isPr ? "#5ad99b" : p.color}
+                    />
+                  );
+                })}
+                {chart.callout && chart.pr && (
+                  <g>
+                    <rect
+                      x={chart.callout.boxX}
+                      y={chart.callout.boxY}
+                      width={chart.callout.boxW}
+                      height={chart.callout.boxH}
+                      fill="var(--bg)"
+                      stroke={chart.pr.color}
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={chart.callout.boxX + 12}
+                      y={chart.callout.boxY + 17}
+                      style={{
+                        fontFamily: "var(--mono)",
+                        fontSize: 9,
+                        fill: "rgba(235,229,210,0.55)",
+                        letterSpacing: "0.12em",
+                      }}
+                    >
+                      {moduleShort(chart.pr.module)} · PR
+                    </text>
+                    <text
+                      x={chart.callout.boxX + 12}
+                      y={chart.callout.boxY + 32}
+                      style={{
+                        fontFamily: "var(--display)",
+                        fontWeight: 500,
+                        fontSize: 17,
+                        fill: "var(--ink)",
+                      }}
+                    >
+                      {chart.pr.score.toFixed(1)}
+                    </text>
+                    {chart.delta !== null && (
+                      <text
+                        x={chart.callout.boxX + 56}
+                        y={chart.callout.boxY + 32}
+                        style={{
+                          fontFamily: "var(--mono)",
+                          fontSize: 9,
+                          fill: "#5ad99b",
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {chart.delta >= 0
+                          ? `↗+${chart.delta}`
+                          : `↘${chart.delta}`}
+                      </text>
+                    )}
+                  </g>
+                )}
+                <g
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    fill: "rgba(235,229,210,0.32)",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  {chart.pts.map((p, i) =>
+                    chart.n <= 7 ||
+                    i === 0 ||
+                    i === chart.n - 1 ||
+                    i % chart.labelStep === 0 ? (
+                      <text
+                        key={i}
+                        x={p.x}
+                        y="312"
+                        textAnchor={
+                          i === 0
+                            ? "start"
+                            : i === chart.n - 1
+                              ? "end"
+                              : "middle"
+                        }
+                      >
+                        {fmtSlash(p.date)}
+                      </text>
+                    ) : null
+                  )}
+                </g>
+              </svg>
+              <div className={styles["chart-legend"]}>
+                {chart.modulesPresent.map((m) => (
+                  <div className={styles.item} key={m}>
+                    <span
+                      className={styles.sw}
+                      style={{ background: modChartColor(m) }}
+                    />{" "}
+                    {m === "autre" ? "Autre" : moduleLabel(m)}
+                  </div>
+                ))}
+                <div className={styles.item}>
+                  <span
+                    className={styles.ln}
+                    style={{ background: "var(--red)" }}
+                  />{" "}
+                  Tendance
+                </div>
+                {chart.delta !== null && (
+                  <span className={styles.delta}>
+                    {chart.delta >= 0 ? `↗ +${chart.delta}` : `↘ ${chart.delta}`}{" "}
+                    pts sur {chart.n} séances
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* MODULE BREAKDOWN */}
           <div className="mb-10">

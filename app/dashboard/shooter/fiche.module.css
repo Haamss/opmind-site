@@ -76,6 +76,20 @@ h1.title em { color: var(--red); font-style: italic; font-weight: 300; }
 .kpi-v .unit { font-family: var(--mono); font-size: 14px; color: var(--dim); letter-spacing: 0.08em; vertical-align: 0.4em; margin-left: 4px; }
 .kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; margin-top: auto; }
 
+.section-head { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0 18px; gap: 16px; }
+.section-head h2 { font-family: var(--display); font-weight: 400; font-size: 32px; letter-spacing: -0.01em; text-transform: uppercase; display: flex; align-items: baseline; gap: 14px; }
+.section-head h2 .num { font-family: var(--mono); font-size: 10px; color: var(--red); letter-spacing: 0.22em; }
+.section-head h2 em { color: var(--red); font-style: italic; font-weight: 300; }
+.section-head .meta { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; }
+.section-head .meta strong { color: var(--ink); }
+.main-chart { padding: 24px; margin-bottom: 32px; }
+.main-chart-svg { width: 100%; height: 340px; }
+.chart-legend { display: flex; gap: 24px; margin-top: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; align-items: center; }
+.chart-legend .item { display: flex; align-items: center; gap: 8px; }
+.chart-legend .item .sw { width: 12px; height: 12px; }
+.chart-legend .item .ln { width: 16px; height: 2px; }
+.chart-legend .delta { margin-left: auto; color: var(--green); }
+
 @media (max-width: 1240px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }

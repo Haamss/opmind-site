@@ -374,15 +374,22 @@ function ShooterDetail() {
     };
   }, [sessions]);
 
-  const moduleBreakdown = useMemo(() => {
-    const counts = new Map<string, number>();
+  const volume = useMemo(() => {
+    const byMod = new Map<string, number>();
+    let total = 0;
     for (const s of sessions) {
       const k = s.module ?? "autre";
-      counts.set(k, (counts.get(k) ?? 0) + 1);
+      const shots = Number(s.total_shots) || 0;
+      byMod.set(k, (byMod.get(k) ?? 0) + shots);
+      total += shots;
     }
-    return Array.from(counts.entries())
-      .map(([module, count]) => ({ module, count, label: moduleLabel(module) }))
-      .sort((a, b) => b.count - a.count);
+    const rows = Array.from(byMod.entries())
+      .map(([module, shots]) => ({ module, shots }))
+      .sort((a, b) => b.shots - a.shots);
+    const max = rows.reduce((m, r) => Math.max(m, r.shots), 0);
+    const dominant = rows.find((r) => r.shots > 0)?.module ?? null;
+    const hasDry = rows.some((r) => r.module === "dry_fire");
+    return { rows, total, max, dominant, hasDry };
   }, [sessions]);
 
   if (!id) {
@@ -826,149 +833,190 @@ function ShooterDetail() {
             </div>
           )}
 
-          {/* MODULE BREAKDOWN */}
-          <div className="mb-10">
-            <SectionTitle eyebrow="02" title="Répartition par module" />
-            {moduleBreakdown.length === 0 ? (
-              <EmptyState>Aucune donnée</EmptyState>
-            ) : (
-              <Card className="p-4">
-                <div style={{ width: "100%", height: Math.max(180, moduleBreakdown.length * 40 + 60) }}>
-                  <ResponsiveContainer>
-                    <BarChart
-                      data={moduleBreakdown}
-                      layout="vertical"
-                      margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-                    >
-                      <CartesianGrid stroke="#1A1A1A" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        allowDecimals={false}
-                        tick={{ fill: "#888", fontFamily: "var(--font-mono)", fontSize: 11 }}
-                        stroke="#1A1A1A"
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="label"
-                        width={110}
-                        tick={{ fill: "#aaa", fontFamily: "var(--font-mono)", fontSize: 11 }}
-                        stroke="#1A1A1A"
-                      />
-                      <Tooltip
-                        cursor={{ fill: "#111" }}
-                        contentStyle={{
-                          background: "#0A0A0A",
-                          border: "1px solid #1A1A1A",
-                          borderRadius: 0,
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 12,
-                          color: "#fff",
-                        }}
-                        labelStyle={{ color: "#fff" }}
-                        formatter={(v) => [Number(v), "Sessions"]}
-                      />
-                      <Bar dataKey="count" isAnimationActive={false}>
-                        {moduleBreakdown.map((d, i) => (
-                          <Cell key={i} fill={moduleColor(d.module)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            )}
+          {/* SECTION 02 — RÉPARTITION & HISTORIQUE */}
+          <div className={styles["section-head"]}>
+            <h2>
+              <span className={styles.num}>02</span> Répartition &amp;{" "}
+              <em>historique.</em>
+            </h2>
+            <div className={styles.meta}>
+              Volume par module · <strong>{stats.count} séances</strong>
+            </div>
           </div>
-
-          {/* SESSIONS TABLE */}
-          <div className="mb-10">
-            <SectionTitle eyebrow="03" title="Historique des sessions" />
-            {sessions.length === 0 ? (
-              <EmptyState>Aucune session enregistrée</EmptyState>
-            ) : (
-              <Card className="overflow-x-auto">
-                <table className="w-full min-w-[720px] border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1A1A1A] text-left">
-                      <Th>Date</Th>
-                      <Th>Module</Th>
-                      <Th className="text-right">Score</Th>
-                      <Th className="text-right">Coups</Th>
-                      <Th className="text-right">Précision</Th>
-                      <Th>Notes</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map((s) => {
-                      // Seules les séances "module" ont un feedback (session_feedback.session_id = module_sessions.id).
-                      const linkable =
-                        s.source === "module" && !!s.module_session_id;
-                      return (
-                      <tr
-                        key={s.id}
-                        onClick={
-                          linkable
-                            ? () => openLinkedSession(s.module_session_id!)
-                            : undefined
-                        }
-                        onKeyDown={
-                          linkable
-                            ? (e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  openLinkedSession(s.module_session_id!);
-                                }
+          {sessions.length === 0 ? (
+            <div
+              className={styles.panel}
+              style={{ marginBottom: 32, padding: 24 }}
+            >
+              <EmptyState>Aucune séance enregistrée</EmptyState>
+            </div>
+          ) : (
+            <div className={styles["grid-2"]}>
+              {/* Dernières séances */}
+              <div className={styles.panel}>
+                <div className={styles["panel-head"]}>
+                  <span className={styles.title}>Dernières séances</span>
+                  <span>{sessions.length} entrées</span>
+                </div>
+                <div className={styles["st-head"]}>
+                  <span>Date</span>
+                  <span>Séance</span>
+                  <span className={styles["col-hide"]}>Module</span>
+                  <span className={styles["col-hide"]}>Coups</span>
+                  <span className={styles["col-hide"]}>Précision</span>
+                  <span style={{ textAlign: "right" }}>Score</span>
+                </div>
+                {sessions.map((s) => {
+                  const linkable =
+                    s.source === "module" && !!s.module_session_id;
+                  const isPr =
+                    stats.bestScore !== null &&
+                    s.normalized_score === stats.bestScore;
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={
+                        linkable
+                          ? () => openLinkedSession(s.module_session_id!)
+                          : undefined
+                      }
+                      onKeyDown={
+                        linkable
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openLinkedSession(s.module_session_id!);
                               }
-                            : undefined
-                        }
-                        role={linkable ? "button" : undefined}
-                        tabIndex={linkable ? 0 : undefined}
-                        className={`border-b border-[#111] ${
-                          linkable
-                            ? "cursor-pointer transition-colors hover:bg-[#111] focus:bg-[#111] focus:outline-none"
-                            : ""
+                            }
+                          : undefined
+                      }
+                      role={linkable ? "button" : undefined}
+                      tabIndex={linkable ? 0 : undefined}
+                      className={`${styles["st-row"]} ${
+                        linkable ? styles["row-link"] : ""
+                      }`}
+                    >
+                      <span className={styles.date}>{fmtSlash(s.date)}</span>
+                      <span className={styles.nm}>
+                        {s.notes?.trim() || moduleLabel(s.module)}
+                        {linkable && (
+                          <span
+                            style={{ color: "var(--red)", marginLeft: 6 }}
+                            aria-hidden
+                          >
+                            ▸
+                          </span>
+                        )}
+                        <span className={styles.s}>
+                          {s.source === "module"
+                            ? "Séance app"
+                            : "Carnet manuel"}
+                        </span>
+                      </span>
+                      <span
+                        className={`${styles["st-mod"]} ${
+                          styles[moduleBadgeClass(s.module)]
                         }`}
                       >
-                        <td className="px-4 py-3 font-mono text-xs text-[#aaa]">{formatDate(s.date)}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
+                        {moduleLabel(s.module)}
+                      </span>
+                      <span className={styles.num}>{s.total_shots ?? "—"}</span>
+                      <span className={`${styles.num} ${styles.acc}`}>
+                        {typeof s.accuracy === "number"
+                          ? `${(s.accuracy * 100).toFixed(0)}%`
+                          : "—"}
+                      </span>
+                      <span
+                        className={`${styles.score} ${isPr ? styles.hl : ""}`}
+                        style={
+                          s.normalized_score === null
+                            ? { color: "var(--dim-2)" }
+                            : undefined
+                        }
+                      >
+                        {typeof s.normalized_score === "number"
+                          ? s.normalized_score.toFixed(1)
+                          : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Répartition par module */}
+              <div className={styles.panel}>
+                <div className={styles["panel-head"]}>
+                  <span className={styles.title}>Répartition par module</span>
+                  <span>Σ {volume.total} coups</span>
+                </div>
+                <div className={styles["mod-wrap"]}>
+                  {volume.rows.map((r) => (
+                    <div className={styles["mod-row"]} key={r.module}>
+                      <span className={styles.lbl}>
+                        <span
+                          className={styles.dot}
+                          style={{ background: modChartColor(r.module) }}
+                        />
+                        {r.module === "autre" ? "Autre" : moduleLabel(r.module)}
+                      </span>
+                      <div className={styles["mod-track"]}>
+                        <div
+                          className={styles.fill}
+                          style={{
+                            width: `${
+                              volume.max > 0 ? (r.shots / volume.max) * 100 : 0
+                            }%`,
+                            background: modChartColor(r.module),
+                          }}
+                        />
+                      </div>
+                      <span className={styles.v}>
+                        {r.shots}
+                        <span className={styles.u}>c</span>
+                      </span>
+                    </div>
+                  ))}
+                  {(volume.dominant || volume.hasDry) && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        paddingTop: 18,
+                        borderTop: "1px solid var(--line)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontFamily: "var(--mono)",
+                        fontSize: 10,
+                        color: "var(--dim)",
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {volume.dominant ? (
+                        <span>
+                          Dominante{" "}
+                          <strong
+                            style={{ color: modChartColor(volume.dominant) }}
                           >
-                            <span
-                              className="inline-block h-2 w-2"
-                              style={{ background: moduleColor(s.module) }}
-                            />
-                            {moduleLabel(s.module)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-sm font-semibold tabular-nums text-white">
-                          {typeof s.normalized_score === "number" ? s.normalized_score.toFixed(1) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-xs tabular-nums text-[#aaa]">
-                          {s.total_shots ?? "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-xs tabular-nums text-[#aaa]">
-                          {typeof s.accuracy === "number" ? `${(s.accuracy * 100).toFixed(0)}%` : "—"}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[#888]">
-                          <span className="flex items-center justify-between gap-2">
-                            <span>
-                              {s.notes || <span className="text-[#444]">—</span>}
-                            </span>
-                            {linkable && (
-                              <span className="shrink-0 font-semibold uppercase tracking-[0.18em] text-[#00E5FF]">
-                                Détail ▸
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </Card>
-            )}
-          </div>
+                            {moduleLabel(volume.dominant)}
+                          </strong>
+                        </span>
+                      ) : (
+                        <span />
+                      )}
+                      {volume.hasDry && (
+                        <span>
+                          Dry fire{" "}
+                          <strong style={{ color: "var(--ink)" }}>
+                            non scoré
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ASSIGNMENTS */}
           <div className="mb-10">
@@ -1077,7 +1125,7 @@ function ShooterDetail() {
                               onClick={() =>
                                 openLinkedSession(a.module_session_id!)
                               }
-                              className="ml-2 inline-flex items-center gap-1.5 border border-[#1A1A1A] bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#00E5FF] hover:text-[#00E5FF]"
+                              className="ml-2 inline-flex items-center gap-1.5 border border-[#1A1A1A] bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#e84a3a] hover:text-[#e84a3a]"
                               aria-label={`Ouvrir la séance liée — ${a.title}`}
                             >
                               Séance ▸

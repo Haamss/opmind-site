@@ -17,10 +17,12 @@ import { getSupabase } from "@/lib/supabase";
 import {
   fetchAssignments,
   fetchModuleSessionById,
+  fetchSessionFeedback,
   fetchUnifiedSessions,
   formatDate,
   isPro,
   type ModuleSessionRow,
+  type SessionFeedbackRow,
 } from "@/components/dashboard/data";
 import { moduleColor, moduleLabel } from "@/components/dashboard/modules";
 import { ProgressionChart } from "@/components/dashboard/ProgressionChart";
@@ -39,6 +41,7 @@ import type {
   Assignment,
   ManualSession,
   Shooter,
+  UnifiedSession,
 } from "@/components/dashboard/types";
 
 export default function ShooterPage() {
@@ -61,7 +64,7 @@ function ShooterDetail() {
   const id = params.get("id");
 
   const [shooter, setShooter] = useState<Shooter | null>(null);
-  const [sessions, setSessions] = useState<ManualSession[]>([]);
+  const [sessions, setSessions] = useState<UnifiedSession[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [instructorName, setInstructorName] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -70,16 +73,24 @@ function ShooterDetail() {
   const [linkedSession, setLinkedSession] = useState<ModuleSessionRow | null>(
     null
   );
+  const [linkedFeedback, setLinkedFeedback] =
+    useState<SessionFeedbackRow | null>(null);
   const [linkedLoading, setLinkedLoading] = useState(false);
 
   const openLinkedSession = useCallback(async (sessionId: string) => {
     setLinkedLoading(true);
     setLinkedSession(null);
+    setLinkedFeedback(null);
     try {
-      const row = await fetchModuleSessionById(sessionId);
+      const [row, feedback] = await Promise.all([
+        fetchModuleSessionById(sessionId),
+        fetchSessionFeedback([sessionId]),
+      ]);
       setLinkedSession(row);
+      setLinkedFeedback(feedback[0] ?? null);
     } catch {
       setLinkedSession(null);
+      setLinkedFeedback(null);
     } finally {
       setLinkedLoading(false);
     }
@@ -365,8 +376,36 @@ function ShooterDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sessions.map((s) => (
-                      <tr key={s.id} className="border-b border-[#111]">
+                    {sessions.map((s) => {
+                      // Seules les séances "module" ont un feedback (session_feedback.session_id = module_sessions.id).
+                      const linkable =
+                        s.source === "module" && !!s.module_session_id;
+                      return (
+                      <tr
+                        key={s.id}
+                        onClick={
+                          linkable
+                            ? () => openLinkedSession(s.module_session_id!)
+                            : undefined
+                        }
+                        onKeyDown={
+                          linkable
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openLinkedSession(s.module_session_id!);
+                                }
+                              }
+                            : undefined
+                        }
+                        role={linkable ? "button" : undefined}
+                        tabIndex={linkable ? 0 : undefined}
+                        className={`border-b border-[#111] ${
+                          linkable
+                            ? "cursor-pointer transition-colors hover:bg-[#111] focus:bg-[#111] focus:outline-none"
+                            : ""
+                        }`}
+                      >
                         <td className="px-4 py-3 font-mono text-xs text-[#aaa]">{formatDate(s.date)}</td>
                         <td className="px-4 py-3">
                           <span
@@ -389,10 +428,20 @@ function ShooterDetail() {
                           {typeof s.accuracy === "number" ? `${(s.accuracy * 100).toFixed(0)}%` : "—"}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-[#888]">
-                          {s.notes || <span className="text-[#444]">—</span>}
+                          <span className="flex items-center justify-between gap-2">
+                            <span>
+                              {s.notes || <span className="text-[#444]">—</span>}
+                            </span>
+                            {linkable && (
+                              <span className="shrink-0 font-semibold uppercase tracking-[0.18em] text-[#00E5FF]">
+                                Détail ▸
+                              </span>
+                            )}
+                          </span>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </Card>
@@ -537,7 +586,11 @@ function ShooterDetail() {
             open={linkedLoading || linkedSession !== null}
             loading={linkedLoading}
             session={linkedSession}
-            onClose={() => setLinkedSession(null)}
+            feedback={linkedFeedback}
+            onClose={() => {
+              setLinkedSession(null);
+              setLinkedFeedback(null);
+            }}
           />
         </>
       )}
@@ -549,17 +602,19 @@ function LinkedSessionModal({
   open,
   loading,
   session,
+  feedback,
   onClose,
 }: {
   open: boolean;
   loading: boolean;
   session: ModuleSessionRow | null;
+  feedback: SessionFeedbackRow | null;
   onClose: () => void;
 }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6">
-      <div className="w-full max-w-md border border-[#1A1A1A] bg-[#0A0A0A]">
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto border border-[#1A1A1A] bg-[#0A0A0A]">
         <div className="flex items-center justify-between border-b border-[#1A1A1A] px-6 py-4">
           <h3 className="font-mono text-base font-bold uppercase tracking-[0.18em] text-white">
             Séance liée
@@ -582,6 +637,7 @@ function LinkedSessionModal({
               Séance introuvable
             </p>
           ) : (
+            <>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
               <SessionField label="Date" value={formatDate(session.date)} />
               <SessionField
@@ -617,6 +673,8 @@ function LinkedSessionModal({
                 }
               />
             </dl>
+            {feedback && <FeedbackBlock feedback={feedback} />}
+            </>
           )}
         </div>
       </div>
@@ -631,6 +689,71 @@ function SessionField({ label, value }: { label: string; value: string }) {
         {label}
       </dt>
       <dd className="mt-1 font-mono text-sm tabular-nums text-white">{value}</dd>
+    </div>
+  );
+}
+
+function FeedbackBlock({ feedback }: { feedback: SessionFeedbackRow }) {
+  const answers = Array.isArray(feedback.answers) ? feedback.answers : [];
+  const hasDifficulty = typeof feedback.difficulty === "number";
+  const hasEnjoyment = typeof feedback.enjoyment === "number"; // null en dry fire
+  const hasText = !!feedback.free_text && feedback.free_text.trim().length > 0;
+
+  // Feedback existant mais entièrement vide → ne rien afficher.
+  if (!hasDifficulty && !hasEnjoyment && !hasText && answers.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-6 border-t border-[#1A1A1A] pt-5">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7A0000]">
+        Feedback tireur
+      </p>
+
+      {(hasDifficulty || hasEnjoyment) && (
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+          {hasDifficulty && (
+            <SessionField label="Difficulté" value={`${feedback.difficulty}/10`} />
+          )}
+          {hasEnjoyment && (
+            <SessionField label="Ressenti" value={`${feedback.enjoyment}/10`} />
+          )}
+        </dl>
+      )}
+
+      {hasText && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#666]">
+            Commentaire
+          </p>
+          <p className="mt-1.5 whitespace-pre-line font-mono text-sm leading-relaxed text-[#aaa]">
+            {feedback.free_text}
+          </p>
+        </div>
+      )}
+
+      {answers.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#666]">
+            Auto-évaluation
+          </p>
+          <ul className="mt-2 space-y-2">
+            {answers.map((a, i) => (
+              <li
+                key={i}
+                className="flex items-start justify-between gap-3 border-b border-[#111] pb-2 last:border-b-0"
+              >
+                <span className="font-mono text-[11px] leading-snug text-[#aaa]">
+                  {a.question}
+                </span>
+                <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-white">
+                  {typeof a.rating === "number" ? `${a.rating}/5` : "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

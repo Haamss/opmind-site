@@ -74,6 +74,37 @@ export async function fetchModuleSessionById(
   return (data as ModuleSessionRow | null) ?? null;
 }
 
+export interface FeedbackAnswer {
+  question: string;
+  rating: number;
+}
+
+export interface SessionFeedbackRow {
+  id: string;
+  session_id: string;
+  difficulty: number | null;
+  enjoyment: number | null;
+  free_text: string | null;
+  answers: FeedbackAnswer[] | null;
+}
+
+/**
+ * Feedback tireur par séance (clé session_id = module_sessions.id).
+ * RLS instructeur déjà en place : la lecture est filtrée en base sur le
+ * lien instructor_shooters → on n'ajoute aucun filtre user_id ici.
+ */
+export async function fetchSessionFeedback(
+  sessionIds: string[]
+): Promise<SessionFeedbackRow[]> {
+  if (sessionIds.length === 0) return [];
+  const { data, error } = await getSupabase()
+    .from("session_feedback")
+    .select("id,session_id,difficulty,enjoyment,free_text,answers")
+    .in("session_id", sessionIds);
+  if (error) throw error;
+  return (data ?? []) as SessionFeedbackRow[];
+}
+
 /**
  * Source unique pour analytics + fiche tireur : fusionne manual_sessions
  * (clé instructor_shooter_id) et module_sessions (clé user_id remappée via

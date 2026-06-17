@@ -188,21 +188,28 @@ export default function DashboardPage() {
         // stages table missing — leave empty
       }
 
-      // sessions
+      // sessions (lues depuis module_sessions — séances réelles de l'app)
       try {
         const { count } = await sb
-          .from("sessions")
+          .from("module_sessions")
           .select("id", { count: "exact", head: true })
           .eq("user_id", userId);
         if (!cancelled && typeof count === "number") setSessionsCount(count);
         const { data: sessionRows } = await sb
-          .from("sessions")
+          .from("module_sessions")
           .select("*")
           .eq("user_id", userId)
           .order("date", { ascending: false })
           .limit(200);
         if (!cancelled && Array.isArray(sessionRows)) {
-          const rows = sessionRows as Session[];
+          // Remap colonnes module_sessions → noms legacy attendus par les
+          // calculs KPI/filtres (hfMoyen, filterAndSortSessions, sparklines…).
+          const rows = (sessionRows as Record<string, unknown>[]).map((r) => ({
+            ...r,
+            hf_best: r.hit_factor,
+            dry_fire: r.is_dry_fire,
+            name: r.session_title,
+          })) as unknown as Session[];
           setSessions(rows);
           const total = rows.reduce(
             (s, x) => s + (Number(x.total_shots) || Number(x.shots_fired) || 0),

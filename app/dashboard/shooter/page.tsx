@@ -1018,127 +1018,134 @@ function ShooterDetail() {
             </div>
           )}
 
-          {/* ASSIGNMENTS */}
-          <div className="mb-10">
-            <SectionTitle eyebrow="04" title="Assignations" />
+          {/* SECTION 03 — ASSIGNATIONS */}
+          <div className={styles["section-head"]}>
+            <h2>
+              <span className={styles.num}>03</span> <em>Assignations.</em>
+            </h2>
+            <div className={styles.meta}>
+              {assignments.filter((a) => a.status === "completed").length}/
+              {assignments.length} complétées
+            </div>
+          </div>
 
+          <div className={styles["action-bar"]}>
             <Link
               href={`/dashboard/shooter/session/new/?id=${shooter.id}`}
-              className="mb-4 flex w-full items-center justify-center gap-3 border border-[#7A0000] bg-[#7A0000] px-6 py-4 font-mono text-sm font-semibold uppercase tracking-[0.22em] text-white transition-colors hover:bg-[#9A0000]"
+              className={styles["btn-red"]}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M12 5v14M5 12h14" />
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" />
               </svg>
               Créer une séance
             </Link>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className={styles["btn-ghost"]}
+            >
+              + Assignation rapide
+            </button>
+          </div>
 
-            <div className="mb-5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#888] transition-colors hover:text-white"
-              >
-                + Assignation rapide
-              </button>
-            </div>
-
-            {assignments.length === 0 ? (
+          {assignments.length === 0 ? (
+            <div
+              className={styles.panel}
+              style={{ marginBottom: 32, padding: 24 }}
+            >
               <EmptyState>Aucune assignation</EmptyState>
-            ) : (
-              <Card className="overflow-x-auto">
-                <table className="w-full min-w-[800px] border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1A1A1A] text-left">
-                      <Th>Titre</Th>
-                      <Th>Type</Th>
-                      <Th>Module</Th>
-                      <Th>Deadline</Th>
-                      <Th>Statut</Th>
-                      <Th className="text-right">PDF</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignments.map((a) => (
-                      <tr
-                        key={a.id}
-                        className={`border-b border-[#111] ${
-                          a.status === "overdue" ? "bg-[#E84040]/[0.05]" : ""
+            </div>
+          ) : (
+            <div className={styles.panel} style={{ marginBottom: 32 }}>
+              <div className={styles["as-head"]}>
+                <span>Titre</span>
+                <span className={styles["col-hide"]}>Type</span>
+                <span className={styles["col-hide"]}>Module</span>
+                <span className={styles["col-hide"]}>Deadline</span>
+                <span>Statut</span>
+                <span style={{ textAlign: "right" }}>Actions</span>
+              </div>
+              {assignments.map((a) => (
+                <div
+                  key={a.id}
+                  className={`${styles["as-row"]} ${
+                    a.status === "overdue" ? styles.overdue : ""
+                  }`}
+                >
+                  <span className={styles.at}>
+                    {a.title}
+                    {a.description && (
+                      <span className={styles.s}>{a.description}</span>
+                    )}
+                  </span>
+                  <span className={`${styles.ty} ${styles["col-hide"]}`}>
+                    {a.type}
+                  </span>
+                  <span className={styles["col-hide"]}>
+                    {a.module_kind ? (
+                      <span
+                        className={`${styles["st-mod"]} ${
+                          styles[moduleBadgeClass(a.module_kind)]
                         }`}
                       >
-                        <td className="px-4 py-3">
-                          <p className="font-mono text-sm font-semibold text-white">{a.title}</p>
-                          {a.description && (
-                            <p className="mt-1 max-w-md font-mono text-[11px] whitespace-pre-line text-[#888]">{a.description}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#aaa]">
-                          {a.type}
-                        </td>
-                        <td className="px-4 py-3">
-                          {a.module_kind ? (
-                            <span
-                              className="inline-flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
-                            >
-                              <span
-                                className="inline-block h-2 w-2"
-                                style={{ background: moduleColor(a.module_kind) }}
-                              />
-                              {moduleLabel(a.module_kind)}
-                            </span>
-                          ) : (
-                            <span className="text-[#444]">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[#aaa]">{formatDate(a.deadline)}</td>
-                        <td className="px-4 py-3">
-                          <AssignmentStatusBadge status={a.status} />
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {a.content ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                downloadSessionPdf({
-                                  title: a.title,
-                                  type: a.type,
-                                  module_kind: a.module_kind,
-                                  deadline: a.deadline,
-                                  shooter_name: shooter.name,
-                                  instructor_name: instructorName || "—",
-                                  content: a.content!,
-                                })
-                              }
-                              className="inline-flex items-center gap-1.5 border border-[#1A1A1A] bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#7A0000] hover:text-[#7A0000]"
-                              aria-label={`Télécharger la fiche PDF — ${a.title}`}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                              </svg>
-                              PDF
-                            </button>
-                          ) : (
-                            <span className="font-mono text-[10px] text-[#444]">—</span>
-                          )}
-                          {a.status === "completed" && a.module_session_id && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openLinkedSession(a.module_session_id!)
-                              }
-                              className="ml-2 inline-flex items-center gap-1.5 border border-[#1A1A1A] bg-transparent px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#e84a3a] hover:text-[#e84a3a]"
-                              aria-label={`Ouvrir la séance liée — ${a.title}`}
-                            >
-                              Séance ▸
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            )}
-          </div>
+                        {moduleLabel(a.module_kind)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--dim-2)" }}>—</span>
+                    )}
+                  </span>
+                  <span className={`${styles.dl} ${styles["col-hide"]}`}>
+                    {formatDate(a.deadline)}
+                  </span>
+                  <span>
+                    <AssignmentStatusBadge status={a.status} />
+                  </span>
+                  <span className={styles["as-actions"]}>
+                    {a.content && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          downloadSessionPdf({
+                            title: a.title,
+                            type: a.type,
+                            module_kind: a.module_kind,
+                            deadline: a.deadline,
+                            shooter_name: shooter.name,
+                            instructor_name: instructorName || "—",
+                            content: a.content!,
+                          })
+                        }
+                        className={styles["btn-mini"]}
+                        aria-label={`Télécharger la fiche PDF — ${a.title}`}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                        </svg>
+                        PDF
+                      </button>
+                    )}
+                    {a.status === "completed" && a.module_session_id && (
+                      <button
+                        type="button"
+                        onClick={() => openLinkedSession(a.module_session_id!)}
+                        className={styles["btn-mini"]}
+                        aria-label={`Ouvrir la séance liée — ${a.title}`}
+                      >
+                        Séance ▸
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <NewAssignmentModal
             shooterId={shooter.id}

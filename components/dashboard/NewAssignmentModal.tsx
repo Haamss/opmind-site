@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { AssignmentType, ModuleKind } from "./types";
 
 interface Props {
   shooterId: string;
-  open: boolean;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -27,7 +26,7 @@ const MODULE_KINDS: { v: ModuleKind; l: string }[] = [
   { v: "degrade", l: "Dégradé" },
 ];
 
-export function NewAssignmentModal({ shooterId, open, onClose, onCreated }: Props) {
+export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
   const [type, setType] = useState<AssignmentType>("module");
   const [moduleKind, setModuleKind] = useState<ModuleKind>("basique");
   const [title, setTitle] = useState("");
@@ -35,19 +34,6 @@ export function NewAssignmentModal({ shooterId, open, onClose, onCreated }: Prop
   const [deadline, setDeadline] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setType("module");
-      setModuleKind("basique");
-      setTitle("");
-      setDescription("");
-      setDeadline("");
-      setError(null);
-    }
-  }, [open]);
-
-  if (!open) return null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

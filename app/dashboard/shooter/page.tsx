@@ -191,6 +191,9 @@ function ShooterDetail() {
   }, [id]);
 
   useEffect(() => {
+    // Pattern fetch-on-mount légitime : load() est async, setLoading/setError
+    // synchrones au début sont nécessaires pour l'UX. Pas une cascade de rendus.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
@@ -1131,12 +1134,13 @@ function ShooterDetail() {
             </div>
           )}
 
-          <NewAssignmentModal
-            shooterId={shooter.id}
-            open={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onCreated={() => load()}
-          />
+          {modalOpen && (
+            <NewAssignmentModal
+              shooterId={shooter.id}
+              onClose={() => setModalOpen(false)}
+              onCreated={() => load()}
+            />
+          )}
 
           <LinkedSessionModal
             open={linkedLoading || linkedSession !== null}

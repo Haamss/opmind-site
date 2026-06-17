@@ -39,10 +39,10 @@ const LEVEL_PALETTE: Record<string, string> = {
 };
 
 const LEVEL_LABELS: Record<string, string> = {
-  A: "PRO · A",
-  B: "SENIOR · B",
-  C: "JUNIOR · C",
-  D: "DÉBUTANT · D",
+  A: "A · 80+",
+  B: "B · 70+",
+  C: "C · 60+",
+  D: "D · <60",
 };
 
 const AVATAR_PALETTE = [
@@ -676,10 +676,10 @@ function Filters({
 }) {
   const tabs: { key: FilterKey; label: string }[] = [
     { key: "all", label: "Tous" },
-    { key: "A", label: "Pro · A" },
-    { key: "B", label: "Senior · B" },
-    { key: "C", label: "Junior · C" },
-    { key: "D", label: "Débutant · D" },
+    { key: "A", label: "A" },
+    { key: "B", label: "B" },
+    { key: "C", label: "C" },
+    { key: "D", label: "D" },
   ];
   return (
     <div
@@ -690,7 +690,7 @@ function Filters({
         gap: 12,
         flexWrap: "wrap",
         paddingBottom: 12,
-        borderBottom: `1px solid ${LINE}`,
+        borderBottom: "1px solid var(--line)",
       }}
     >
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -701,101 +701,80 @@ function Filters({
               key={t.key}
               type="button"
               onClick={() => setFilter(t.key)}
-              style={{
-                background: active ? LINE : "transparent",
-                border: `1px solid ${active ? LINE : "transparent"}`,
-                color: active ? INK : "#555",
-                padding: "6px 12px",
-                fontFamily: FONT_RAJ,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
+              className={styles["btn-mini"]}
+              style={
+                active
+                  ? { borderColor: "var(--red)", color: "var(--red)" }
+                  : undefined
+              }
             >
               {t.label}{" "}
-              <span style={{ color: active ? INK_DIM : "#444", marginLeft: 4 }}>
+              <span
+                style={{
+                  color: active ? "var(--dim)" : "var(--dim-2)",
+                  marginLeft: 4,
+                }}
+              >
                 {counts[t.key]}
               </span>
             </button>
           );
         })}
-        <button
-          type="button"
-          style={{
-            background: "transparent",
-            border: `1px solid transparent`,
-            color: "#555",
-            padding: "6px 12px",
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          Club · Tous ▾
-        </button>
       </div>
-      <div style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
+      <span
+        style={{
+          marginLeft: "auto",
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "var(--dim)",
+        }}
+      >
+        Tri · Activité récente
+      </span>
+      <div style={{ display: "flex" }}>
         <button
           type="button"
+          onClick={() => setView("grid")}
+          aria-label="Vue grille"
           style={{
             background: "transparent",
-            border: `1px solid ${LINE}`,
-            color: INK_DIM,
-            padding: "6px 12px",
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
+            border: `1px solid ${
+              view === "grid" ? "var(--red)" : "var(--line-2)"
+            }`,
+            color: view === "grid" ? "var(--red)" : "var(--dim)",
+            width: 32,
+            height: 28,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
           }}
         >
-          Tri · Activité récente ▾
+          <IconGrid />
         </button>
-        <div style={{ display: "flex" }}>
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            aria-label="Vue grille"
-            style={{
-              background: view === "grid" ? LINE : "transparent",
-              border: `1px solid ${LINE}`,
-              color: view === "grid" ? INK : INK_DIM,
-              width: 32,
-              height: 28,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <IconGrid />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            aria-label="Vue liste"
-            style={{
-              background: view === "list" ? LINE : "transparent",
-              border: `1px solid ${LINE}`,
-              borderLeft: "none",
-              color: view === "list" ? INK : INK_DIM,
-              width: 32,
-              height: 28,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <IconList />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setView("list")}
+          aria-label="Vue liste"
+          style={{
+            background: "transparent",
+            border: `1px solid ${
+              view === "list" ? "var(--red)" : "var(--line-2)"
+            }`,
+            borderLeft: "none",
+            color: view === "list" ? "var(--red)" : "var(--dim)",
+            width: 32,
+            height: 28,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <IconList />
+        </button>
       </div>
     </div>
   );

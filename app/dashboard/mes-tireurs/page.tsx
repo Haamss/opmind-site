@@ -801,8 +801,8 @@ function ShooterCard({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
       onFocus={() => setHover(true)}
       onBlur={() => setHover(false)}
       style={{
-        background: SURFACE,
-        border: `1px solid ${hover ? ACCENT : LINE}`,
+        background: "var(--surface)",
+        border: `1px solid ${hover ? "var(--red)" : "var(--line)"}`,
         padding: 20,
         display: "flex",
         flexDirection: "column",
@@ -828,15 +828,15 @@ function CardHeader({ s }: { s: DerivedShooter }) {
           width: 44,
           height: 44,
           borderRadius: "50%",
-          background: s.avatarColor,
-          color: "#fff",
+          background: "var(--red-deep)",
+          border: "1px solid var(--red)",
+          color: "var(--ink)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: FONT_RAJ,
-          fontSize: 16,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
+          fontFamily: "var(--display)",
+          fontSize: 18,
+          fontWeight: 600,
           flexShrink: 0,
         }}
       >
@@ -847,28 +847,22 @@ function CardHeader({ s }: { s: DerivedShooter }) {
           <h3
             style={{
               margin: 0,
-              fontFamily: FONT_RAJ,
-              fontSize: 18,
-              fontWeight: 700,
-              letterSpacing: "0.02em",
+              fontFamily: "var(--display)",
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
               textTransform: "uppercase",
-              color: INK,
+              color: "var(--ink)",
               lineHeight: 1.1,
             }}
           >
             {s.row.name}
           </h3>
           <span
+            className={styles.badge}
             style={{
-              fontFamily: FONT_RAJ,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "#fff",
-              background: LEVEL_PALETTE[s.level],
-              padding: "2px 6px",
-              borderRadius: 2,
+              color: LEVEL_PALETTE[s.level],
+              borderColor: LEVEL_PALETTE[s.level],
             }}
           >
             {LEVEL_LABELS[s.level]}
@@ -876,24 +870,18 @@ function CardHeader({ s }: { s: DerivedShooter }) {
         </div>
         <div
           style={{
-            marginTop: 4,
-            fontFamily: FONT_RAJ,
+            marginTop: 6,
+            fontFamily: "var(--mono)",
             fontSize: 11,
-            fontWeight: 500,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
-            color: INK_DIM,
+            color: "var(--dim)",
           }}
         >
           {[s.club, `Inscrit ${fmtDot(s.row.linked_at ?? null, true)}`]
             .filter(Boolean)
             .join(" · ")}
         </div>
-      </div>
-      <div style={{ display: "flex", gap: 6, alignSelf: "center" }}>
-        <IconButton aria-label="Message"><IconMessage /></IconButton>
-        <IconButton aria-label="Calendrier"><IconCalendar /></IconButton>
-        <IconButton aria-label="Détails"><IconArrowRight /></IconButton>
       </div>
     </div>
   );
@@ -973,10 +961,10 @@ function CardStats({ s }: { s: DerivedShooter }) {
         const positiveDir = st.lowerIsBetter ? delta < 0 : delta > 0;
         const negativeDir = st.lowerIsBetter ? delta > 0 : delta < 0;
         const color = positiveDir
-          ? OK
+          ? "var(--green)"
           : negativeDir
-            ? ACCENT_BRIGHT
-            : INK_DIM;
+            ? "var(--red)"
+            : "var(--dim)";
         const arrow = delta === 0 ? "·" : delta > 0 ? "↑" : "↓";
         const deltaText =
           delta === 0
@@ -991,23 +979,23 @@ function CardStats({ s }: { s: DerivedShooter }) {
           >
             <span
               style={{
-                fontFamily: FONT_RAJ,
+                fontFamily: "var(--mono)",
                 fontSize: 9,
                 fontWeight: 600,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
-                color: INK_FAINT,
+                color: "var(--dim-2)",
               }}
             >
               {st.label}
             </span>
             <span
               style={{
-                fontFamily: FONT_RAJ,
+                fontFamily: "var(--display)",
                 fontSize: 24,
-                fontWeight: 700,
+                fontWeight: 500,
                 letterSpacing: "-0.01em",
-                color: INK,
+                color: "var(--ink)",
                 lineHeight: 1,
               }}
             >
@@ -1016,12 +1004,12 @@ function CardStats({ s }: { s: DerivedShooter }) {
             {st.note && (
               <span
                 style={{
-                  fontFamily: FONT_RAJ,
+                  fontFamily: "var(--mono)",
                   fontSize: 9,
                   fontWeight: 600,
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  color: INK_DIM,
+                  color: "var(--dim)",
                 }}
               >
                 {st.note}
@@ -1029,7 +1017,7 @@ function CardStats({ s }: { s: DerivedShooter }) {
             )}
             <span
               style={{
-                fontFamily: FONT_RAJ,
+                fontFamily: "var(--mono)",
                 fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: "0.1em",
@@ -1053,13 +1041,13 @@ function CardFooter({ s }: { s: DerivedShooter }) {
         display: "flex",
         justifyContent: "space-between",
         paddingTop: 12,
-        borderTop: `1px solid ${LINE}`,
-        fontFamily: FONT_RAJ,
+        borderTop: "1px solid var(--line)",
+        fontFamily: "var(--mono)",
         fontSize: 10,
         fontWeight: 600,
         letterSpacing: "0.18em",
         textTransform: "uppercase",
-        color: INK_DIM,
+        color: "var(--dim)",
       }}
     >
       <span>Dernière · {relTime(s.lastActivity)}</span>
@@ -1073,11 +1061,11 @@ function CardFlag({ flag }: { flag: DerivedShooter["flag"] }) {
     return (
       <div
         style={{
-          background: "rgba(255,107,0,0.12)",
-          border: `1px solid ${WARN}`,
-          color: WARN,
+          background: "rgba(245,166,35,0.12)",
+          border: "1px solid var(--amber)",
+          color: "var(--amber)",
           padding: "6px 10px",
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: "0.18em",
@@ -1092,11 +1080,11 @@ function CardFlag({ flag }: { flag: DerivedShooter["flag"] }) {
     return (
       <div
         style={{
-          background: "rgba(0,200,83,0.1)",
-          border: `1px solid ${OK}`,
-          color: OK,
+          background: "rgba(90,217,155,0.1)",
+          border: "1px solid var(--green)",
+          color: "var(--green)",
           padding: "6px 10px",
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: "0.18em",
@@ -1108,25 +1096,18 @@ function CardFlag({ flag }: { flag: DerivedShooter["flag"] }) {
     );
   }
   return (
-    <button
-      type="button"
+    <span
       style={{
-        background: "transparent",
-        border: "none",
-        color: ACCENT_BRIGHT,
-        textAlign: "left",
-        padding: 0,
-        fontFamily: FONT_RAJ,
+        color: "var(--red)",
+        fontFamily: "var(--mono)",
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: "0.14em",
         textTransform: "uppercase",
-        cursor: "pointer",
-        textDecoration: "underline",
       }}
     >
       Reprendre contact
-    </button>
+    </span>
   );
 }
 
@@ -1686,25 +1667,6 @@ function IconList() {
       <line x1="4" y1="6" x2="20" y2="6" />
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="18" x2="20" y2="18" />
-    </svg>
-  );
-}
-
-function IconMessage() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function IconCalendar() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   );
 }

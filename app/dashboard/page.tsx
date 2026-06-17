@@ -249,7 +249,7 @@ export default function DashboardPage() {
     if (!window.confirm("Supprimer cette session ?")) return;
     try {
       const sb = getSupabase();
-      await sb.from("sessions").delete().eq("id", sessionId);
+      await sb.from("module_sessions").delete().eq("id", sessionId);
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       setSessionsCount((c) => Math.max(0, c - 1));
       const removed = sessions.find((s) => s.id === sessionId);
@@ -359,6 +359,7 @@ export default function DashboardPage() {
               setView={selectView}
               onDelete={onDeleteSession}
               onEdit={startEditSession}
+              isShooter={(profile?.role ?? "") === "shooter"}
             />
           )}
           {view === "performance" && (
@@ -507,6 +508,8 @@ function Topbar({
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     profile?.email ||
     "Utilisateur";
+  // Le tireur crée ses séances depuis l'app (écriture web = table legacy).
+  const isShooter = (profile?.role ?? "") === "shooter";
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -604,25 +607,27 @@ function Topbar({
             ⌘K
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setView("create_session")}
-          style={{
-            background: "#7A0000",
-            color: "#fff",
-            border: "none",
-            padding: "8px 14px",
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          + Créer une séance
-        </button>
+        {!isShooter && (
+          <button
+            type="button"
+            onClick={() => setView("create_session")}
+            style={{
+              background: "#7A0000",
+              color: "#fff",
+              border: "none",
+              padding: "8px 14px",
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            + Créer une séance
+          </button>
+        )}
       </div>
       <div
         style={{
@@ -933,11 +938,13 @@ function HomeView({
           gap: 16,
         }}
       >
-        <QuickAction
-          title="Créer une séance"
-          subtitle="Drill builder · Export app"
-          onClick={() => setView("create_session")}
-        />
+        {(profile?.role ?? "") !== "shooter" && (
+          <QuickAction
+            title="Créer une séance"
+            subtitle="Drill builder · Export app"
+            onClick={() => setView("create_session")}
+          />
+        )}
         <QuickAction
           title="Importer une cible"
           subtitle="PDF parsing · Bientôt"
@@ -2730,13 +2737,8 @@ function sessionStatus(s: Session): "planned" | "draft" | "done" {
   if (s.status === "planned" || s.status === "draft" || s.status === "done") {
     return s.status;
   }
-  if (!s.name || s.name.trim() === "") return "draft";
-  if (s.date) {
-    const d = new Date(s.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (d > today) return "planned";
-  }
+  // Pas de status explicite ⇒ module_session (séance déjà réalisée côté app).
+  // On la traite comme terminée par défaut ⇒ l'onglet PROGRAMMÉES retombe à 0.
   return "done";
 }
 
@@ -3035,11 +3037,13 @@ function SessionsView({
   setView,
   onDelete,
   onEdit,
+  isShooter,
 }: {
   sessions: Session[];
   setView: (v: View) => void;
   onDelete: (id: string) => void;
   onEdit: (s: Session) => void;
+  isShooter: boolean;
 }) {
   const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
   const [sessionPeriod, setSessionPeriod] = useState<SessionPeriod>("all");
@@ -3299,25 +3303,27 @@ function SessionsView({
         <div style={{ marginTop: 24 }}>
           <EmptyRow>
             Aucune session correspondante.{" "}
-            <button
-              type="button"
-              onClick={() => setView("create_session")}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#ebe5d2",
-                textDecoration: "underline",
-                textDecorationColor: "#7A0000",
-                textUnderlineOffset: 2,
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 11,
-                letterSpacing: "0.12em",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              Créer une séance →
-            </button>
+            {!isShooter && (
+              <button
+                type="button"
+                onClick={() => setView("create_session")}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#ebe5d2",
+                  textDecoration: "underline",
+                  textDecorationColor: "#7A0000",
+                  textUnderlineOffset: 2,
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: 11,
+                  letterSpacing: "0.12em",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Créer une séance →
+              </button>
+            )}
           </EmptyRow>
         </div>
       ) : (
@@ -3573,7 +3579,7 @@ function SessionCardDispatch({
 }) {
   const status = sessionStatus(session);
   if (status === "planned") {
-    return <PlannedSessionCard session={session} onEdit={onEdit} />;
+    return <PlannedSessionCard session={session} />;
   }
   if (status === "draft") {
     return (
@@ -3612,10 +3618,8 @@ function dayPart(d: Date): { day: string; month: string } {
 
 function PlannedSessionCard({
   session,
-  onEdit,
 }: {
   session: Session;
-  onEdit: () => void;
 }) {
   const d = new Date(session.date || session.created_at || "");
   const valid = !isNaN(d.getTime());
@@ -3762,27 +3766,6 @@ function PlannedSessionCard({
         >
           {countdownStr(session.date)}
         </span>
-        <button
-          type="button"
-          onClick={onEdit}
-          style={{
-            background: "#7A0000",
-            border: "none",
-            color: "#fff",
-            padding: "10px 16px",
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <IconMobile /> Envoyer vers l&apos;app · iOS / Android
-        </button>
       </div>
     </div>
   );
@@ -4246,25 +4229,6 @@ function DraftSessionCard({
     </div>
   );
 }
-
-function IconMobile() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="6" y="2" width="12" height="20" rx="2" />
-      <line x1="11" y1="18" x2="13" y2="18" />
-    </svg>
-  );
-}
-
 
 const detailSecondaryStyle: CSSProperties = {
   marginTop: 4,
@@ -10178,24 +10142,32 @@ function formatDate(value?: string | null): string {
 
 function computeStreak(sessions: Session[]): number {
   if (!sessions.length) return 0;
+  // Clés de jour en temps LOCAL (et non UTC) : sinon minuit local converti en
+  // UTC peut tomber la veille (France = UTC+1/+2) et casser le streak du jour.
+  const dayKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
   const dates = new Set<string>();
   for (const s of sessions) {
     const v = s.date || s.created_at;
     if (!v) continue;
     const d = new Date(v);
     if (isNaN(d.getTime())) continue;
-    dates.add(d.toISOString().slice(0, 10));
+    dates.add(dayKey(d));
   }
   if (dates.size === 0) return 0;
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
-  const todayKey = cursor.toISOString().slice(0, 10);
+  const todayKey = dayKey(cursor);
   if (!dates.has(todayKey)) {
     cursor.setDate(cursor.getDate() - 1);
   }
   let streak = 0;
   for (let i = 0; i < 1000; i++) {
-    const key = cursor.toISOString().slice(0, 10);
+    const key = dayKey(cursor);
     if (dates.has(key)) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);

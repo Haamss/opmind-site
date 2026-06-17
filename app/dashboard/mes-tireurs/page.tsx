@@ -364,16 +364,16 @@ export default function MesTireursPage() {
       const daysSince = Math.floor(
         (Date.now() - s.lastActivity.getTime()) / 86400000
       );
-      let color = OK;
+      let color = "var(--green)";
       let label = "Session terminée";
       if (daysSince > 14) {
-        color = ACCENT_BRIGHT;
+        color = "var(--red)";
         label = "Inactif depuis";
       } else if (s.flag === "stagne") {
-        color = WARN;
+        color = "var(--amber)";
         label = "Stagnation détectée";
       } else if (s.flag === "rapide") {
-        color = OK;
+        color = "var(--green)";
         label = "Progression rapide";
       }
       events.push({
@@ -1096,8 +1096,8 @@ function InvitePlaceholder() {
   return (
     <div
       style={{
-        background: SURFACE_DARK,
-        border: `1px dashed #333`,
+        background: "var(--surface)",
+        border: "1px dashed var(--line-2)",
         padding: 32,
         display: "flex",
         flexDirection: "column",
@@ -1109,10 +1109,10 @@ function InvitePlaceholder() {
     >
       <span
         style={{
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--display)",
           fontSize: 32,
-          fontWeight: 700,
-          color: INK_FAINT,
+          fontWeight: 500,
+          color: "var(--dim-2)",
           lineHeight: 1,
         }}
       >
@@ -1120,24 +1120,24 @@ function InvitePlaceholder() {
       </span>
       <span
         style={{
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 13,
           fontWeight: 700,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: INK_DIM,
+          color: "var(--dim)",
         }}
       >
         Inviter un tireur
       </span>
       <span
         style={{
-          fontFamily: FONT_RAJ,
+          fontFamily: "var(--mono)",
           fontSize: 10,
           fontWeight: 500,
           letterSpacing: "0.2em",
           textTransform: "uppercase",
-          color: INK_FAINT,
+          color: "var(--dim-2)",
         }}
       >
         Code · Email · QR
@@ -1191,35 +1191,11 @@ function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }
 
 /* ──────────────  Right panels  ────────────── */
 
-function PanelTitle({
-  title,
-  count,
-  trailing,
-}: {
-  title: string;
-  count?: number;
-  trailing?: string;
-}) {
+function PanelTitle({ title, meta }: { title: string; meta?: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        fontFamily: FONT_RAJ,
-        fontSize: 10,
-        fontWeight: 600,
-        letterSpacing: "0.2em",
-        textTransform: "uppercase",
-        color: INK_DIM,
-        marginBottom: 12,
-      }}
-    >
-      <span>
-        // {title}
-        {count != null && ` · ${String(count).padStart(2, "0")}`}
-      </span>
-      <span style={{ color: ACCENT_BRIGHT }}>{trailing || "→"}</span>
+    <div className={styles["panel-head"]}>
+      <span className={styles.title}>{title}</span>
+      {meta != null && <span>{meta}</span>}
     </div>
   );
 }
@@ -1232,21 +1208,15 @@ function LeaderboardPanel({
   selfName: string;
 }) {
   return (
-    <section
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        padding: 16,
-      }}
-    >
+    <section className={styles.panel}>
       <PanelTitle title="Leaderboard · Score (dernière séance)" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {entries.length === 0 ? (
           <span
             style={{
-              fontFamily: FONT_RAJ,
+              fontFamily: "var(--mono)",
               fontSize: 11,
-              color: INK_FAINT,
+              color: "var(--dim-2)",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
             }}
@@ -1268,10 +1238,10 @@ function LeaderboardPanel({
               >
                 <span
                   style={{
-                    fontFamily: FONT_RAJ,
+                    fontFamily: "var(--mono)",
                     fontSize: 11,
                     fontWeight: 700,
-                    color: INK_FAINT,
+                    color: "var(--dim-2)",
                   }}
                 >
                   {String(i + 1).padStart(2, "0")}
@@ -1281,25 +1251,26 @@ function LeaderboardPanel({
                     width: 24,
                     height: 24,
                     borderRadius: "50%",
-                    background: e.avatarColor,
-                    color: "#fff",
+                    background: "var(--red-deep)",
+                    border: "1px solid var(--red)",
+                    color: "var(--ink)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontFamily: FONT_RAJ,
-                    fontSize: 10,
-                    fontWeight: 700,
+                    fontFamily: "var(--display)",
+                    fontSize: 11,
+                    fontWeight: 600,
                   }}
                 >
                   {initials(e.row.name)}
                 </div>
                 <span
                   style={{
-                    fontFamily: FONT_RAJ,
+                    fontFamily: "var(--sans)",
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: "0.06em",
-                    color: isSelf ? INK : "#bbb",
+                    color: isSelf ? "var(--ink)" : "var(--dim)",
                     textDecoration: isSelf ? "underline" : "none",
                     textTransform: "uppercase",
                     overflow: "hidden",
@@ -1308,16 +1279,16 @@ function LeaderboardPanel({
                   }}
                 >
                   {e.row.name} ·{" "}
-                  <span style={{ color: INK_FAINT, fontSize: 10 }}>
+                  <span style={{ color: "var(--dim-2)", fontSize: 10 }}>
                     {LEVEL_LABELS[e.level].split(" ")[0]}
                   </span>
                 </span>
                 <span
                   style={{
-                    fontFamily: FONT_RAJ,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: ACCENT_BRIGHT,
+                    fontFamily: "var(--display)",
+                    fontSize: 16,
+                    fontWeight: 500,
+                    color: "var(--red)",
                   }}
                 >
                   {e.lastScore > 0 ? e.lastScore.toFixed(1) : "—"}
@@ -1333,162 +1304,107 @@ function LeaderboardPanel({
 
 function InvitationsPanel({ shooters }: { shooters: DerivedShooter[] }) {
   return (
-    <section
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        padding: 16,
-      }}
-    >
-      <PanelTitle title="Invitations en attente" count={shooters.length} />
-      {shooters.length === 0 ? (
-        <span
-          style={{
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            color: INK_FAINT,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          Aucune invitation
-        </span>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {shooters.map((s) => (
-            <div
-              key={s.row.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto auto",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontFamily: FONT_RAJ,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: INK,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
+    <section className={styles.panel}>
+      <PanelTitle
+        title="Invitations en attente"
+        meta={String(shooters.length).padStart(2, "0")}
+      />
+      <div style={{ padding: 16 }}>
+        {shooters.length === 0 ? (
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              color: "var(--dim-2)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Aucune invitation
+          </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {shooters.map((s) => (
+              <div
+                key={s.row.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--sans)",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "var(--ink)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {s.row.name}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--mono)",
+                      fontSize: 9,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "var(--dim-2)",
+                    }}
+                  >
+                    {s.row.specialite || "—"} ·{" "}
+                    {fmtDot(s.row.linked_at ?? null, true)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Refuser"
+                  className={styles["btn-mini"]}
                 >
-                  {s.row.name}
-                </span>
-                <span
-                  style={{
-                    fontFamily: FONT_RAJ,
-                    fontSize: 9,
-                    fontWeight: 500,
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: INK_FAINT,
-                  }}
+                  ✕
+                </button>
+                <button
+                  type="button"
+                  aria-label="Accepter"
+                  className={styles["btn-mini"]}
+                  style={{ color: "var(--green)", borderColor: "var(--green)" }}
                 >
-                  {s.row.specialite || "—"} ·{" "}
-                  {fmtDot(s.row.linked_at ?? null, true)}
-                </span>
+                  ✓
+                </button>
               </div>
-              <button
-                type="button"
-                aria-label="Refuser"
-                style={{
-                  background: "transparent",
-                  border: `1px solid ${LINE}`,
-                  color: ACCENT_BRIGHT,
-                  width: 24,
-                  height: 24,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontFamily: FONT_RAJ,
-                  fontSize: 12,
-                }}
-              >
-                ✕
-              </button>
-              <button
-                type="button"
-                aria-label="Accepter"
-                style={{
-                  background: ACCENT,
-                  border: "none",
-                  color: "#fff",
-                  width: 24,
-                  height: 24,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontFamily: FONT_RAJ,
-                  fontSize: 12,
-                }}
-              >
-                ✓
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
 function GroupsPanel({ groups }: { groups: [string, number][] }) {
   return (
-    <section
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        padding: 16,
-      }}
-    >
+    <section className={styles.panel}>
       <PanelTitle title="Groupes · Classes" />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {groups.map(([label, count]) => (
-          <span
-            key={label}
-            style={{
-              background: BG,
-              border: `1px solid ${LINE}`,
-              color: INK,
-              padding: "6px 10px",
-              fontFamily: FONT_RAJ,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
-            {label}{" "}
-            <span style={{ color: INK_FAINT, marginLeft: 4 }}>{count}</span>
-          </span>
-        ))}
-        <button
-          type="button"
-          style={{
-            background: "transparent",
-            border: `1px dashed #333`,
-            color: INK_DIM,
-            padding: "6px 10px",
-            fontFamily: FONT_RAJ,
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          + Nouveau
-        </button>
+      <div style={{ padding: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {groups.map(([label, count]) => {
+          const tint = LEVEL_PALETTE[label.split(" ")[0]];
+          return (
+            <span
+              key={label}
+              className={styles.chip}
+              style={tint ? { color: tint, borderColor: tint } : undefined}
+            >
+              {label}
+              <span className={styles.k}>{count}</span>
+            </span>
+          );
+        })}
       </div>
     </section>
   );
@@ -1506,84 +1422,78 @@ function ActivityFeedPanel({
   }[];
 }) {
   return (
-    <section
-      style={{
-        background: SURFACE,
-        border: `1px solid ${LINE}`,
-        padding: 16,
-      }}
-    >
+    <section className={styles.panel}>
       <PanelTitle title="Activité tireurs · Live" />
-      {events.length === 0 ? (
-        <span
-          style={{
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            color: INK_FAINT,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          Aucune activité récente
-        </span>
-      ) : (
-        <div
-          style={{ display: "flex", flexDirection: "column", gap: 10 }}
-        >
-          {events.map((e, i) => (
-            <div
-              key={i}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "8px 1fr auto",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <span
+      <div style={{ padding: 16 }}>
+        {events.length === 0 ? (
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              color: "var(--dim-2)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Aucune activité récente
+          </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {events.map((e, i) => (
+              <div
+                key={i}
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: e.color,
-                }}
-              />
-              <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontFamily: FONT_RAJ,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: INK,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {e.shooter.row.name}{" "}
-                  <span style={{ color: INK_DIM, fontWeight: 500 }}>
-                    · {e.label} · {e.value}
-                  </span>
-                </span>
-              </div>
-              <span
-                style={{
-                  fontFamily: FONT_RAJ,
-                  fontSize: 9,
-                  fontWeight: 500,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  color: INK_FAINT,
+                  display: "grid",
+                  gridTemplateColumns: "8px 1fr auto",
+                  alignItems: "center",
+                  gap: 10,
                 }}
               >
-                {relTime(e.at)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: e.color,
+                  }}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--mono)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "var(--ink)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {e.shooter.row.name}{" "}
+                    <span style={{ color: "var(--dim)", fontWeight: 500 }}>
+                      · {e.label} · {e.value}
+                    </span>
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 9,
+                    fontWeight: 500,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: "var(--dim-2)",
+                  }}
+                >
+                  {relTime(e.at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

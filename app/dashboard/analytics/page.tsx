@@ -27,6 +27,17 @@ import type {
   ShooterWithStats,
 } from "@/components/dashboard/types";
 
+// Tokens charte dupliqués pour recharts : var(--...) ne se résout pas
+// dans les attributs SVG (stroke/fill). À garder synchronisés avec
+// dashboard.module.css.
+const CHART = {
+  line: "rgba(235,229,210,0.08)", // matches --line
+  dim: "rgba(235,229,210,0.55)", // matches --dim
+  bg: "#0a0a0c", // matches --bg
+  ink: "#ebe5d2", // matches --ink
+  mono: "'JetBrains Mono', ui-monospace, monospace",
+};
+
 const PALETTE = [
   "#FFB300",
   "#4D8AFF",
@@ -168,7 +179,14 @@ export default function AnalyticsPage() {
           <EmptyState>Aucun tireur</EmptyState>
         ) : (
           <div className={styles.panel} style={{ padding: 16 }}>
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div
+              style={{
+                marginBottom: 16,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {shooters.map((s) => {
                 const on = visibleIds.has(s.id);
                 const color = colorForId.get(s.id);
@@ -177,15 +195,20 @@ export default function AnalyticsPage() {
                     key={s.id}
                     type="button"
                     onClick={() => toggleShooter(s.id)}
-                    className={`flex items-center gap-2 border px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors ${
+                    className={styles["btn-mini"]}
+                    style={
                       on
-                        ? "border-[#333] bg-[#111] text-white"
-                        : "border-[#1A1A1A] text-[#555] hover:border-[#333]"
-                    }`}
+                        ? { borderColor: "var(--red)", color: "var(--red)" }
+                        : undefined
+                    }
                   >
                     <span
-                      className="inline-block h-2.5 w-2.5"
-                      style={{ background: on ? color : "#333" }}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        flexShrink: 0,
+                        background: on ? color : "var(--dim-2)",
+                      }}
                     />
                     {s.name}
                   </button>
@@ -199,34 +222,34 @@ export default function AnalyticsPage() {
               <div style={{ width: "100%", height: 360 }}>
                 <ResponsiveContainer>
                   <LineChart data={lineChartData} margin={{ top: 16, right: 24, left: 8, bottom: 8 }}>
-                    <CartesianGrid stroke="#1A1A1A" />
+                    <CartesianGrid stroke={CHART.line} />
                     <XAxis
                       type="number"
                       dataKey="t"
                       scale="time"
                       domain={["dataMin", "dataMax"]}
-                      tick={{ fill: "#888", fontFamily: "var(--font-mono)", fontSize: 11 }}
+                      tick={{ fill: CHART.dim, fontFamily: CHART.mono, fontSize: 11, letterSpacing: "0.1em" }}
                       tickFormatter={(t) =>
                         new Date(Number(t)).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
                       }
-                      stroke="#1A1A1A"
+                      stroke={CHART.dim}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      tick={{ fill: "#888", fontFamily: "var(--font-mono)", fontSize: 11 }}
-                      stroke="#1A1A1A"
+                      tick={{ fill: CHART.dim, fontFamily: CHART.mono, fontSize: 11, letterSpacing: "0.1em" }}
+                      stroke={CHART.dim}
                       width={32}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#0A0A0A",
-                        border: "1px solid #1A1A1A",
+                        background: CHART.bg,
+                        border: `1px solid ${CHART.line}`,
                         borderRadius: 0,
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: CHART.mono,
                         fontSize: 12,
-                        color: "#fff",
+                        color: CHART.ink,
                       }}
-                      labelStyle={{ color: "#fff", textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 10 }}
+                      labelStyle={{ color: CHART.ink, textTransform: "uppercase", letterSpacing: "0.18em", fontSize: 10 }}
                       labelFormatter={(label) =>
                         new Date(Number(label)).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })
                       }
@@ -245,7 +268,8 @@ export default function AnalyticsPage() {
                           name={s.id}
                           stroke={colorForId.get(s.id)}
                           strokeWidth={2}
-                          dot={{ r: 3, stroke: "#000", strokeWidth: 1 }}
+                          dot={{ r: 3, stroke: CHART.bg, strokeWidth: 1 }}
+                          activeDot={{ r: 4, stroke: CHART.bg, strokeWidth: 1 }}
                           isAnimationActive={false}
                           connectNulls
                         />

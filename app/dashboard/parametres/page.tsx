@@ -5,22 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { getSupabase } from "@/lib/supabase";
+import styles from "@/components/dashboard/dashboard.module.css";
 
-/* ──────────────  Tokens  ────────────── */
+/* ──────────────  Tokens (design system partagé via .page) ────────────── */
 
-const ACCENT = "#7A0000";
-const ACCENT_BRIGHT = "#E84040";
-const OK = "#4CAF50";
-const INK = "#fff";
-const INK_DIM = "#666";
-const INK_FAINT = "#444";
-const BG = "#0a0a0a";
-const SURFACE = "#111";
-const SURFACE_DARK = "#0d0d0d";
-const LINE = "#1a1a1a";
-const INPUT_BORDER = "#222";
+const ACCENT = "var(--red)";
+const ACCENT_BRIGHT = "var(--red)";
+const OK = "var(--green)";
+const INK = "var(--ink)";
+const INK_DIM = "var(--dim)";
+const INK_FAINT = "var(--dim-2)";
+const BG = "var(--bg)";
+const SURFACE = "var(--surface)";
+const SURFACE_DARK = "var(--bg)";
+const LINE = "var(--line)";
+const INPUT_BORDER = "var(--line-2)";
 
-const FONT_RAJ = "var(--font-rajdhani), 'Rajdhani', system-ui, sans-serif";
+const FONT_RAJ = "var(--sans)";
 
 /* ──────────────  Types  ────────────── */
 
@@ -341,6 +342,7 @@ export default function ParametresPage() {
 
   return (
     <div
+      className={styles.page}
       style={{
         background: BG,
         minHeight: "100vh",
@@ -356,7 +358,7 @@ export default function ParametresPage() {
 
           {/* Section 1 — Notifications */}
           <SectionLabel text="// NOTIFICATIONS — CE QUI TE PARVIENT PAR EMAIL" />
-          <div style={cardStyle}>
+          <div className={styles.panel} style={cardStyle}>
             <NotifRow
               title="Séance complétée."
               desc="Un tireur valide une séance assignée."
@@ -444,7 +446,7 @@ export default function ParametresPage() {
 
           {/* Section 2 — Affichage */}
           <SectionLabel text="// AFFICHAGE — PRÉFÉRENCES VISUELLES" />
-          <div style={cardStyle}>
+          <div className={styles.panel} style={cardStyle}>
             <RadioRow
               label="Langue"
               value={display.language}
@@ -501,9 +503,8 @@ export default function ParametresPage() {
           {/* Section 3 — App mobile */}
           <SectionLabel text="// APP MOBILE — SYNCHRONISATION" />
           <div
+            className={styles.panel}
             style={{
-              background: SURFACE_DARK,
-              border: `1px solid ${LINE}`,
               padding: 32,
               display: "flex",
               flexDirection: "column",
@@ -607,7 +608,7 @@ export default function ParametresPage() {
 
           {/* Section 4 — Données */}
           <SectionLabel text="// DONNÉES — EXPORT & CONFIDENTIALITÉ" />
-          <div style={cardStyle}>
+          <div className={styles.panel} style={cardStyle}>
             <button
               type="button"
               onClick={handleExportJson}
@@ -776,49 +777,16 @@ function TopHeader({ onSignOut }: { onSignOut: () => void }) {
 
 function TitleSection() {
   return (
-    <div style={{ marginBottom: 32 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          fontFamily: FONT_RAJ,
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          color: INK_DIM,
-        }}
-      >
-        <span aria-hidden style={{ width: 32, height: 1, background: ACCENT }} />
-        Module · Configuration
+    <div className={styles["page-head"]}>
+      <div>
+        <div className={styles.eyebrow}>Module · Configuration</div>
+        <h1 className={styles.title}>
+          Mes <em>Paramètres.</em>
+        </h1>
+        <div className={styles["title-sub"]}>
+          Notifications, affichage et synchronisation.
+        </div>
       </div>
-      <h1
-        style={{
-          margin: "16px 0 0 0",
-          fontFamily: FONT_RAJ,
-          fontWeight: 700,
-          fontSize: 64,
-          letterSpacing: "-0.02em",
-          textTransform: "uppercase",
-          lineHeight: 1,
-        }}
-      >
-        <span style={{ color: INK }}>Mes </span>
-        <span style={{ color: ACCENT_BRIGHT }}>Paramètres.</span>
-      </h1>
-      <p
-        style={{
-          marginTop: 16,
-          fontFamily: FONT_RAJ,
-          fontSize: 14,
-          fontWeight: 500,
-          letterSpacing: "0.04em",
-          color: INK_DIM,
-        }}
-      >
-        Notifications, affichage et synchronisation.
-      </p>
     </div>
   );
 }
@@ -891,9 +859,9 @@ function RadioRow({
               type="button"
               onClick={() => onChange(o.value)}
               style={{
-                background: active ? "#1a0000" : SURFACE,
+                background: active ? "var(--red-soft)" : SURFACE,
                 border: `1px solid ${active ? ACCENT : INPUT_BORDER}`,
-                color: active ? INK : "#888",
+                color: active ? INK : INK_DIM,
                 padding: "8px 18px",
                 fontFamily: FONT_RAJ,
                 fontSize: 11,
@@ -957,8 +925,8 @@ function SectionLabel({ text }: { text: string }) {
     <div
       style={{
         margin: "36px 0 12px",
-        fontFamily: FONT_RAJ,
-        fontSize: 11,
+        fontFamily: "var(--mono)",
+        fontSize: 10,
         fontWeight: 600,
         letterSpacing: "0.2em",
         textTransform: "uppercase",
@@ -973,8 +941,6 @@ function SectionLabel({ text }: { text: string }) {
 /* ──────────────  Styles  ────────────── */
 
 const cardStyle: React.CSSProperties = {
-  background: SURFACE,
-  border: `1px solid ${LINE}`,
   padding: 24,
   display: "flex",
   flexDirection: "column",

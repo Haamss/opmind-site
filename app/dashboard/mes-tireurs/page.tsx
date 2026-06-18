@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "../../../lib/supabase";
 import { fetchUnifiedSessions } from "../../../components/dashboard/data";
@@ -206,7 +206,7 @@ export default function MesTireursPage() {
         const { data: rows } = await sb
           .from("instructor_shooters")
           .select(
-            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at"
+            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status"
           )
           .eq("instructor_id", userId)
           .order("linked_at", { ascending: false });
@@ -803,6 +803,121 @@ function ShooterCard({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }) {
       <CardStats s={s} />
       <CardFooter s={s} />
       <CardFlag flag={s.flag} />
+      <CardInvite s={s} />
+    </div>
+  );
+}
+
+/* ──────────────  Card invite (code + badge statut)  ────────────── */
+
+function CardInvite({ s }: { s: DerivedShooter }) {
+  const [copied, setCopied] = useState(false);
+  const inviteStatus = s.row.invite_status;
+  const code = s.row.invite_code;
+
+  // Pas de bloc si aucun statut d'invitation connu.
+  if (inviteStatus !== "pending" && inviteStatus !== "accepted") return null;
+
+  if (inviteStatus === "accepted") {
+    return (
+      <div
+        style={{
+          paddingTop: 12,
+          borderTop: "1px solid var(--line)",
+          display: "flex",
+        }}
+      >
+        <span
+          className={styles.badge}
+          style={{ color: "var(--green)", borderColor: "var(--green)" }}
+        >
+          Lié
+        </span>
+      </div>
+    );
+  }
+
+  // pending
+  async function onCopy(e: MouseEvent) {
+    // Évite d'ouvrir la fiche tireur (la carte entière est cliquable).
+    e.stopPropagation();
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard indisponible — silencieux */
+    }
+  }
+
+  return (
+    <div
+      style={{
+        paddingTop: 12,
+        borderTop: "1px solid var(--line)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <span
+        className={styles.badge}
+        style={{
+          color: "var(--amber)",
+          borderColor: "var(--amber)",
+          alignSelf: "flex-start",
+        }}
+      >
+        En attente
+      </span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          gap: 8,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "var(--surface-2)",
+            border: "1px solid var(--line-2)",
+            padding: "10px 14px",
+            fontFamily: "var(--mono)",
+            fontSize: 22,
+            fontWeight: 700,
+            letterSpacing: "0.32em",
+            color: "var(--ink)",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          {code || "——————"}
+        </div>
+        <button
+          type="button"
+          onClick={onCopy}
+          aria-label="Copier le code d'invitation"
+          className={styles["btn-mini"]}
+          style={{ flexShrink: 0, padding: "0 14px" }}
+        >
+          {copied ? "Copié" : "Copier"}
+        </button>
+      </div>
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--dim)",
+        }}
+      >
+        Communiquez ce code à votre tireur
+      </span>
     </div>
   );
 }

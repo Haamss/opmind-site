@@ -24,6 +24,8 @@ export interface Shooter {
   instructor_notes: string | null;
   status: ShooterStatus;
   linked_at: string;
+  invite_code: string | null;
+  invite_status: "pending" | "accepted" | null;
 }
 
 export interface ManualSession {

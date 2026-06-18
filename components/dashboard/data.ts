@@ -23,7 +23,7 @@ export async function fetchShooters(): Promise<Shooter[]> {
   const { data, error } = await getSupabase()
     .from("instructor_shooters")
     .select(
-      "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at"
+      "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status"
     )
     .order("linked_at", { ascending: false });
   if (error) throw error;

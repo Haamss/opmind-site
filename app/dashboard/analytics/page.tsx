@@ -17,12 +17,11 @@ import {
   joinShooterStats,
 } from "@/components/dashboard/data";
 import {
-  Card,
   EmptyState,
-  SectionTitle,
   TrendArrow,
 } from "@/components/dashboard/ui";
 import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
+import styles from "@/components/dashboard/dashboard.module.css";
 import type {
   ManualSession,
   ShooterWithStats,
@@ -115,31 +114,60 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="px-6 py-8 md:px-10 md:py-10">
-      <div className="mb-8">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-[#7A0000]">
-          Analytics
-        </p>
-        <h1 className="mt-2 font-mono text-3xl font-bold uppercase tracking-tight text-white md:text-4xl">
-          Comparatif
-        </h1>
+    <div
+      className={styles.page}
+      style={{ minHeight: "100vh", background: "var(--bg)", padding: "32px 40px 80px" }}
+    >
+      <div className={styles["page-head"]}>
+        <div>
+          <div className={styles.eyebrow}>Module · Analytics</div>
+          <h1 className={styles.title}>
+            Comparatif<em>.</em>
+          </h1>
+        </div>
+        <div className={styles["head-meta"]}>
+          <div className={styles.stat}>
+            <span>Tireurs</span>
+            <strong>{String(shooters.length).padStart(2, "0")}</strong>
+          </div>
+          <div className={styles.stat}>
+            <span>Sessions</span>
+            <strong>{String(allSessions.length).padStart(2, "0")}</strong>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-6 border border-[#E84040]/50 bg-[#E84040]/[0.08] px-4 py-3 font-mono text-xs uppercase tracking-[0.22em] text-[#E84040]">
+        <div
+          style={{
+            margin: "0 0 24px",
+            border: "1px solid var(--red)",
+            background: "var(--red-soft)",
+            color: "var(--red)",
+            padding: "12px 16px",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+          }}
+        >
           {error}
         </div>
       )}
 
       {/* PROGRESSION MULTI */}
-      <div className="mb-10">
-        <SectionTitle eyebrow="01" title="Progression multi-tireurs" />
+      <div style={{ marginBottom: 40 }}>
+        <div className={styles["section-head"]}>
+          <h2>
+            <span className={styles.num}>01</span> Progression multi-tireurs
+          </h2>
+        </div>
         {loading ? (
           <EmptyState>Chargement…</EmptyState>
         ) : shooters.length === 0 ? (
           <EmptyState>Aucun tireur</EmptyState>
         ) : (
-          <Card className="p-4">
+          <div className={styles.panel} style={{ padding: 16 }}>
             <div className="mb-4 flex flex-wrap gap-2">
               {shooters.map((s) => {
                 const on = visibleIds.has(s.id);
@@ -226,31 +254,39 @@ export default function AnalyticsPage() {
                 </ResponsiveContainer>
               </div>
             )}
-          </Card>
+          </div>
         )}
       </div>
 
       {/* HEATMAP */}
-      <div className="mb-10">
-        <SectionTitle eyebrow="02" title="Activité — 30 derniers jours" />
+      <div style={{ marginBottom: 40 }}>
+        <div className={styles["section-head"]}>
+          <h2>
+            <span className={styles.num}>02</span> Activité — 30 derniers jours
+          </h2>
+        </div>
         {loading ? (
           <EmptyState>Chargement…</EmptyState>
         ) : (
-          <Card className="p-6">
+          <div className={styles.panel} style={{ padding: 24 }}>
             <ActivityHeatmap sessions={allSessions} days={30} />
-          </Card>
+          </div>
         )}
       </div>
 
       {/* RANKING */}
-      <div className="mb-10">
-        <SectionTitle eyebrow="03" title="Classement" />
+      <div style={{ marginBottom: 40 }}>
+        <div className={styles["section-head"]}>
+          <h2>
+            <span className={styles.num}>03</span> Classement
+          </h2>
+        </div>
         {loading ? (
           <EmptyState>Chargement…</EmptyState>
         ) : ranking.length === 0 ? (
           <EmptyState>Aucune donnée à classer</EmptyState>
         ) : (
-          <Card className="overflow-x-auto">
+          <div className={styles.panel} style={{ overflowX: "auto" }}>
             <table className="w-full min-w-[640px] border-collapse">
               <thead>
                 <tr className="border-b border-[#1A1A1A] text-left">
@@ -296,7 +332,7 @@ export default function AnalyticsPage() {
                 })}
               </tbody>
             </table>
-          </Card>
+          </div>
         )}
       </div>
     </div>

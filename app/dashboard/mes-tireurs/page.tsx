@@ -851,6 +851,24 @@ function CardInvite({ s }: { s: DerivedShooter }) {
     }
   }
 
+  async function onShare(e: MouseEvent) {
+    // Évite d'ouvrir la fiche tireur (la carte entière est cliquable).
+    e.stopPropagation();
+    if (!code) return;
+    const message = `Vous avez été ajouté au groupe OpMind.\nOuvrez l'app → Rejoindre un instructeur → Code : ${code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Invitation OpMind", text: message });
+      } catch {
+        /* partage annulé par l'utilisateur — silencieux */
+      }
+    } else {
+      // Fallback desktop : WhatsApp Web pré-rempli.
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, "_blank");
+    }
+  }
+
   return (
     <div
       style={{
@@ -904,6 +922,15 @@ function CardInvite({ s }: { s: DerivedShooter }) {
           style={{ flexShrink: 0, padding: "0 14px" }}
         >
           {copied ? "Copié" : "Copier"}
+        </button>
+        <button
+          type="button"
+          onClick={onShare}
+          aria-label="Partager le code d'invitation"
+          className={styles["btn-mini"]}
+          style={{ flexShrink: 0, padding: "0 14px" }}
+        >
+          Partager
         </button>
       </div>
       <span

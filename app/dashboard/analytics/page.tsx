@@ -38,6 +38,9 @@ const CHART = {
   mono: "'JetBrains Mono', ui-monospace, monospace",
 };
 
+// Grille du classement (en-tête + lignes) — pattern .st-head/.st-row.
+const RANK_COLS = "60px minmax(0, 1.6fr) 100px 80px 90px";
+
 const PALETTE = [
   "#FFB300",
   "#4D8AFF",
@@ -310,71 +313,75 @@ export default function AnalyticsPage() {
         ) : ranking.length === 0 ? (
           <EmptyState>Aucune donnée à classer</EmptyState>
         ) : (
-          <div className={styles.panel} style={{ overflowX: "auto" }}>
-            <table className="w-full min-w-[640px] border-collapse">
-              <thead>
-                <tr className="border-b border-[#1A1A1A] text-left">
-                  <Th className="w-16 text-center">Rang</Th>
-                  <Th>Tireur</Th>
-                  <Th className="text-right">Score moyen</Th>
-                  <Th className="text-center">Tendance</Th>
-                  <Th className="text-right">Sessions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranking.map((s, i) => {
-                  const rank = i + 1;
-                  const top3 = rank <= 3;
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`border-b border-[#111] ${top3 ? "bg-[#7A0000]/[0.06]" : ""}`}
-                    >
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={`inline-flex h-7 w-7 items-center justify-center border font-mono text-sm font-bold tabular-nums ${
-                            top3
-                              ? "border-[#7A0000] bg-[#7A0000] text-white"
-                              : "border-[#1A1A1A] text-[#666]"
-                          }`}
-                        >
-                          {rank}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-sm font-semibold text-white">{s.name}</td>
-                      <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums text-white">
-                        {(s.avgScore as number).toFixed(1)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <TrendArrow trend={s.trend} />
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs tabular-nums text-[#aaa]">
-                        {s.sessions.length}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className={styles.panel}>
+            <div
+              className={styles["st-head"]}
+              style={{ gridTemplateColumns: RANK_COLS }}
+            >
+              <span style={{ textAlign: "center" }}>Rang</span>
+              <span>Tireur</span>
+              <span style={{ textAlign: "right" }}>Score moyen</span>
+              <span style={{ textAlign: "center" }}>Tendance</span>
+              <span style={{ textAlign: "right" }}>Sessions</span>
+            </div>
+            {ranking.map((s, i) => {
+              const rank = i + 1;
+              const top3 = rank <= 3;
+              return (
+                <div
+                  key={s.id}
+                  className={styles["st-row"]}
+                  style={{
+                    gridTemplateColumns: RANK_COLS,
+                    ...(top3 ? { background: "var(--red-soft)" } : null),
+                  }}
+                >
+                  <span style={{ justifySelf: "center" }}>
+                    {top3 ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 28,
+                          height: 28,
+                          border: "1px solid var(--red)",
+                          color: "var(--red)",
+                          fontFamily: "var(--display)",
+                          fontWeight: 700,
+                          fontSize: 15,
+                        }}
+                      >
+                        {String(rank).padStart(2, "0")}
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontFamily: "var(--mono)",
+                          fontSize: 12,
+                          color: "var(--dim-2)",
+                        }}
+                      >
+                        {String(rank).padStart(2, "0")}
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.nm}>{s.name}</span>
+                  <span className={styles.score}>
+                    {(s.avgScore as number).toFixed(1)}
+                  </span>
+                  <span style={{ justifySelf: "center" }}>
+                    <TrendArrow trend={s.trend} />
+                  </span>
+                  <span className={styles.num} style={{ textAlign: "right" }}>
+                    {s.sessions.length}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function Th({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th
-      className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#888] ${className}`}
-    >
-      {children}
-    </th>
   );
 }

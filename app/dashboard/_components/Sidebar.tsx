@@ -83,6 +83,11 @@ export default function DashboardSidebar({
           matchView: "performance",
         },
         {
+          label: "Comparatif",
+          href: "/dashboard/comparatif",
+          matchPath: "/dashboard/comparatif",
+        },
+        {
           label: "Mes Tireurs",
           href: "/dashboard/mes-tireurs",
           matchPath: "/dashboard/mes-tireurs",

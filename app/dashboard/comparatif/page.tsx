@@ -54,7 +54,7 @@ const PALETTE = [
   "#888888",
 ];
 
-export default function AnalyticsPage() {
+export default function ComparatifPage() {
   const [shooters, setShooters] = useState<ShooterWithStats[]>([]);
   const [allSessions, setAllSessions] = useState<ManualSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
     >
       <div className={styles["page-head"]}>
         <div>
-          <div className={styles.eyebrow}>Module · Analytics</div>
+          <div className={styles.eyebrow}>Module · Comparatif</div>
           <h1 className={styles.title}>
             Comparatif<em>.</em>
           </h1>

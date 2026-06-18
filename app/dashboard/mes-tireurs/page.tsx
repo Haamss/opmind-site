@@ -15,21 +15,11 @@ import type {
 
 /* ──────────────  Tokens  ────────────── */
 
-const ACCENT = "#7A0000";
+// Couleurs de niveau (LEVEL_PALETTE) — seules valeurs « langage B » conservées
+// après bascule sur le design system partagé (le reste vit dans dashboard.module.css).
 const ACCENT_BRIGHT = "#E84040";
-const OK = "#00C853";
 const WARN = "#FF6B00";
 const INFO = "#4D8AFF";
-const INK = "#fff";
-const INK_DIM = "#666";
-const INK_FAINT = "#444";
-const BG = "#0a0a0a";
-const SURFACE = "#111";
-const SURFACE_DARK = "#0d0d0d";
-const LINE = "#1a1a1a";
-
-const FONT_RAJ =
-  "var(--font-rajdhani), 'Rajdhani', system-ui, sans-serif";
 
 // Grille partagée en-tête + lignes de la vue liste (.st-head / .st-row).
 const LIST_COLS = "minmax(0, 1.6fr) 100px 0.8fr 0.8fr 96px";
@@ -47,17 +37,6 @@ const LEVEL_LABELS: Record<string, string> = {
   C: "C · 60+",
   D: "D · <60",
 };
-
-const AVATAR_PALETTE = [
-  "#E84040",
-  "#FF6B00",
-  "#4D8AFF",
-  "#00C853",
-  "#7A0000",
-  "#9B59B6",
-  "#F5A623",
-  "#1ABC9C",
-];
 
 /* ──────────────  Types  ────────────── */
 
@@ -84,24 +63,11 @@ type DerivedShooter = {
   sessionsCount: number;
   sessionsDelta: number;
   club: string;
-  avatarColor: string;
   flag?: "stagne" | "rapide" | "contact";
   lastActivity: Date | null;
 };
 
 /* ──────────────  Helpers  ────────────── */
-
-function hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h * 31 + s.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function pickFrom<T>(arr: T[], seed: string): T {
-  return arr[hash(seed) % arr.length];
-}
 
 function deriveLevelFromScore(score: number): "A" | "B" | "C" | "D" {
   if (score >= 80) return "A";
@@ -114,7 +80,6 @@ function deriveShooter(
   row: Shooter,
   sessions: UnifiedSession[]
 ): DerivedShooter {
-  const seed = row.id + row.name;
   const ordered = [...sessions].sort(
     (a, b) =>
       new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
@@ -173,7 +138,6 @@ function deriveShooter(
     sessionsCount: sessions.length,
     sessionsDelta,
     club: row.unit || "",
-    avatarColor: pickFrom(AVATAR_PALETTE, seed),
     flag,
     lastActivity,
   };
@@ -406,10 +370,10 @@ export default function MesTireursPage() {
     <div
       className={styles.page}
       style={{
-        background: BG,
+        background: "var(--bg)",
         minHeight: "100vh",
-        color: INK,
-        fontFamily: FONT_RAJ,
+        color: "var(--ink)",
+        fontFamily: "var(--sans)",
       }}
     >
       {/* Top header */}

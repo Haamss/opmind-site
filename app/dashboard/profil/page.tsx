@@ -4,24 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import styles from "@/components/dashboard/dashboard.module.css";
 
-/* ──────────────  Tokens  ────────────── */
+/* ──────────────  Tokens (design system partagé via .page) ────────────── */
 
-const ACCENT = "#7A0000";
-const ACCENT_BRIGHT = "#E84040";
-const OK = "#4CAF50";
-const INK = "#fff";
-const INK_DIM = "#666";
-const INK_FAINT = "#444";
-const BG = "#0a0a0a";
-const SURFACE = "#111";
-const SURFACE_DARK = "#0d0d0d";
-const LINE = "#1a1a1a";
-const INPUT_BG = "#111";
-const INPUT_BORDER = "#222";
-const SYNC_BG = "#0d1a0d";
+const ACCENT = "var(--red)";
+const ACCENT_BRIGHT = "var(--red)";
+const OK = "var(--green)";
+const INK = "var(--ink)";
+const INK_DIM = "var(--dim)";
+const INK_FAINT = "var(--dim-2)";
+const BG = "var(--bg)";
+const SURFACE = "var(--surface)";
+const SURFACE_DARK = "var(--bg)";
+const LINE = "var(--line)";
+const INPUT_BG = "var(--surface)";
+const INPUT_BORDER = "var(--line-2)";
+const SYNC_BG = "rgba(90, 217, 155, 0.1)";
 
-const FONT_RAJ = "var(--font-rajdhani), 'Rajdhani', system-ui, sans-serif";
+const FONT_RAJ = "var(--sans)";
 
 const CITY_POOL = [
   "Marseille",
@@ -417,6 +418,7 @@ export default function ProfilPage() {
 
   return (
     <div
+      className={styles.page}
       style={{
         background: BG,
         minHeight: "100vh",
@@ -441,9 +443,8 @@ export default function ProfilPage() {
           {/* Section: profil */}
           <SectionLabel text="// MON PROFIL — VISIBLE PAR TES TIREURS" />
           <div
+            className={styles.panel}
             style={{
-              background: SURFACE,
-              border: `1px solid ${LINE}`,
               padding: 24,
               display: "flex",
               flexDirection: "column",
@@ -593,9 +594,8 @@ export default function ProfilPage() {
           {/* Section: sécurité */}
           <SectionLabel text="// SÉCURITÉ — ACCÈS & AUTHENTIFICATION" />
           <div
+            className={styles.panel}
             style={{
-              background: SURFACE,
-              border: `1px solid ${LINE}`,
               padding: 24,
               display: "flex",
               flexDirection: "column",
@@ -680,9 +680,8 @@ export default function ProfilPage() {
           {/* Section: chargeurs */}
           <SectionLabel text="// MES CHARGEURS — CONFIG MATÉRIEL · PRÉ-REMPLI AUX SÉANCES" />
           <div
+            className={styles.panel}
             style={{
-              background: SURFACE,
-              border: `1px solid ${LINE}`,
               padding: 24,
               display: "flex",
               flexDirection: "column",
@@ -724,9 +723,9 @@ export default function ProfilPage() {
               >
                 <span
                   style={{
-                    fontFamily: FONT_RAJ,
-                    fontSize: 13,
-                    fontWeight: 700,
+                    fontFamily: "var(--display)",
+                    fontSize: 18,
+                    fontWeight: 500,
                     color: ACCENT_BRIGHT,
                   }}
                 >
@@ -831,7 +830,7 @@ export default function ProfilPage() {
               onClick={addChargeur}
               style={{
                 background: "transparent",
-                border: `1px dashed #333`,
+                border: `1px dashed var(--line-2)`,
                 color: INK_DIM,
                 padding: "12px 16px",
                 fontFamily: FONT_RAJ,
@@ -998,68 +997,17 @@ function TitleSection({
   operatorId: string;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: 24,
-        marginBottom: 32,
-      }}
-    >
+    <div className={styles["page-head"]}>
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.22em",
-            textTransform: "uppercase",
-            color: INK_DIM,
-          }}
-        >
-          <span aria-hidden style={{ width: 32, height: 1, background: ACCENT }} />
-          Module · Compte Opérateur
-        </div>
-        <h1
-          style={{
-            margin: "16px 0 0 0",
-            fontFamily: FONT_RAJ,
-            fontWeight: 700,
-            fontSize: 64,
-            letterSpacing: "-0.02em",
-            textTransform: "uppercase",
-            lineHeight: 1,
-          }}
-        >
-          <span style={{ color: INK }}>Mon </span>
-          <span style={{ color: ACCENT_BRIGHT }}>Profil.</span>
+        <div className={styles.eyebrow}>Module · Profil</div>
+        <h1 className={styles.title}>
+          Mon <em>Profil.</em>
         </h1>
-        <p
-          style={{
-            marginTop: 16,
-            fontFamily: FONT_RAJ,
-            fontSize: 14,
-            fontWeight: 500,
-            letterSpacing: "0.04em",
-            color: INK_DIM,
-          }}
-        >
+        <div className={styles["title-sub"]}>
           Identité opérateur, sécurité et configuration matériel.
-        </p>
+        </div>
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: 10,
-          flexShrink: 0,
-        }}
-      >
+      <div className={styles["head-meta"]}>
         <span
           style={{
             display: "inline-flex",
@@ -1068,8 +1016,8 @@ function TitleSection({
             background: SYNC_BG,
             color: OK,
             padding: "5px 10px",
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
             fontWeight: 600,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -1082,8 +1030,8 @@ function TitleSection({
         </span>
         <span
           style={{
-            fontFamily: FONT_RAJ,
-            fontSize: 11,
+            fontFamily: "var(--mono)",
+            fontSize: 10,
             fontWeight: 600,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -1157,9 +1105,7 @@ function IdentityCard({
       },
     ];
   return (
-    <section
-      style={{ background: SURFACE, border: `1px solid ${LINE}`, padding: 20 }}
-    >
+    <section className={styles.panel} style={{ padding: 20 }}>
       {/* Avatar */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
         <div style={{ position: "relative" }}>
@@ -1168,14 +1114,15 @@ function IdentityCard({
               width: 96,
               height: 96,
               borderRadius: "50%",
-              background: ACCENT,
-              color: "#fff",
+              background: "var(--red-deep)",
+              border: "1px solid var(--red)",
+              color: INK,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontFamily: FONT_RAJ,
+              fontFamily: "var(--display)",
               fontSize: 40,
-              fontWeight: 700,
+              fontWeight: 600,
             }}
           >
             {avatarInitial}
@@ -1206,10 +1153,10 @@ function IdentityCard({
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <div
           style={{
-            fontFamily: FONT_RAJ,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "0.01em",
+            fontFamily: "var(--display)",
+            fontSize: 26,
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
             textTransform: "uppercase",
             color: INK,
             lineHeight: 1.1,
@@ -1290,9 +1237,10 @@ function IdentityCard({
             </span>
             <span
               style={{
-                fontFamily: FONT_RAJ,
-                fontSize: 20,
-                fontWeight: 700,
+                fontFamily: "var(--display)",
+                fontSize: 24,
+                fontWeight: 500,
+                letterSpacing: "-0.01em",
                 color: INK,
                 lineHeight: 1,
               }}
@@ -1516,10 +1464,10 @@ function DeleteModal({
         </div>
         <div
           style={{
-            fontFamily: FONT_RAJ,
-            fontSize: 22,
-            fontWeight: 700,
-            letterSpacing: "0.01em",
+            fontFamily: "var(--display)",
+            fontSize: 26,
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
             textTransform: "uppercase",
             color: INK,
             lineHeight: 1.1,
@@ -1628,8 +1576,8 @@ function SectionLabel({ text }: { text: string }) {
     <div
       style={{
         margin: "36px 0 12px",
-        fontFamily: FONT_RAJ,
-        fontSize: 11,
+        fontFamily: "var(--mono)",
+        fontSize: 10,
         fontWeight: 600,
         letterSpacing: "0.2em",
         textTransform: "uppercase",
@@ -1759,9 +1707,9 @@ function UsageBadge({
       onClick={onToggle}
       title="Basculer match / entraînement"
       style={{
-        background: isMatch ? "#1a0000" : SURFACE,
+        background: isMatch ? "var(--red-soft)" : SURFACE,
         border: `1px solid ${isMatch ? ACCENT : INPUT_BORDER}`,
-        color: isMatch ? ACCENT_BRIGHT : "#888",
+        color: isMatch ? ACCENT_BRIGHT : INK_DIM,
         padding: "5px 8px",
         fontFamily: FONT_RAJ,
         fontSize: 10,

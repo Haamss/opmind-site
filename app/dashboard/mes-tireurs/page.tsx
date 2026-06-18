@@ -474,11 +474,7 @@ export default function MesTireursPage() {
             display: "flex",
             flexDirection: "column",
             gap: 16,
-            position: "sticky",
-            top: 80,
             alignSelf: "start",
-            maxHeight: "calc(100vh - 100px)",
-            overflowY: "auto",
           }}
         >
           <LeaderboardPanel

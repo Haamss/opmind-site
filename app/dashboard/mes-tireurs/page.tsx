@@ -366,6 +366,24 @@ export default function MesTireursPage() {
     return Array.from(map.entries());
   }, [shooters]);
 
+  async function onDeleteInvitation(id: string, name: string) {
+    if (!window.confirm(`Supprimer l'invitation pour ${name} ?`)) return;
+    try {
+      const sb = getSupabase();
+      const { error } = await sb
+        .from("instructor_shooters")
+        .delete()
+        .eq("id", id);
+      if (error) {
+        console.error("Suppression invitation échouée:", error);
+        return;
+      }
+      setShooters((prev) => prev.filter((s) => s.row.id !== id));
+    } catch (e) {
+      console.error("Suppression invitation échouée:", e);
+    }
+  }
+
   return (
     <div
       className={styles.page}
@@ -469,7 +487,10 @@ export default function MesTireursPage() {
               `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim()
             }
           />
-          <InvitationsPanel shooters={pendingShooters} />
+          <InvitationsPanel
+            shooters={pendingShooters}
+            onDelete={onDeleteInvitation}
+          />
           <GroupsPanel groups={groups} />
           <ActivityFeedPanel events={liveFeed} />
         </aside>
@@ -1266,7 +1287,13 @@ function LeaderboardPanel({
   );
 }
 
-function InvitationsPanel({ shooters }: { shooters: DerivedShooter[] }) {
+function InvitationsPanel({
+  shooters,
+  onDelete,
+}: {
+  shooters: DerivedShooter[];
+  onDelete: (id: string, name: string) => void;
+}) {
   return (
     <section className={styles.panel}>
       <PanelTitle
@@ -1293,7 +1320,7 @@ function InvitationsPanel({ shooters }: { shooters: DerivedShooter[] }) {
                 key={s.row.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr auto auto",
+                  gridTemplateColumns: "1fr auto",
                   alignItems: "center",
                   gap: 8,
                 }}
@@ -1329,18 +1356,11 @@ function InvitationsPanel({ shooters }: { shooters: DerivedShooter[] }) {
                 </div>
                 <button
                   type="button"
-                  aria-label="Refuser"
+                  aria-label="Supprimer l'invitation"
                   className={styles["btn-mini"]}
+                  onClick={() => onDelete(s.row.id, s.row.name)}
                 >
                   ✕
-                </button>
-                <button
-                  type="button"
-                  aria-label="Accepter"
-                  className={styles["btn-mini"]}
-                  style={{ color: "var(--green)", borderColor: "var(--green)" }}
-                >
-                  ✓
                 </button>
               </div>
             ))}

@@ -9,9 +9,9 @@
   --ink: #ebe5d2;
   --dim: rgba(235, 229, 210, 0.55);
   --dim-2: rgba(235, 229, 210, 0.3);
-  --red: #e84a3a;
-  --red-deep: #9d2618;
-  --red-soft: rgba(232, 74, 58, 0.08);
+  --red: #E84040;
+  --red-deep: #7A0000;
+  --red-soft: rgba(232, 64, 64, 0.08);
   --green: #5ad99b;
   /* polices deja chargees par le root layout (next/font), avec fallbacks du design */
   --display: var(--font-antonio), "Antonio", "Bebas Neue", sans-serif;

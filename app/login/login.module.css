@@ -1,0 +1,520 @@
+.auth {
+  /* tokens du design, scopes a la page */
+  --bg: #0a0a0c;
+  --panel: #0e0e12;
+  --surface-2: #1b1b21;
+  --line: rgba(235, 229, 210, 0.1);
+  --line-2: rgba(235, 229, 210, 0.18);
+  --line-3: rgba(235, 229, 210, 0.32);
+  --ink: #ebe5d2;
+  --dim: rgba(235, 229, 210, 0.55);
+  --dim-2: rgba(235, 229, 210, 0.3);
+  --red: #e84a3a;
+  --red-deep: #9d2618;
+  --red-soft: rgba(232, 74, 58, 0.08);
+  --green: #5ad99b;
+  /* polices deja chargees par le root layout (next/font), avec fallbacks du design */
+  --display: var(--font-antonio), "Antonio", "Bebas Neue", sans-serif;
+  --sans: var(--font-geist), "Geist", -apple-system, sans-serif;
+  --mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.auth *,
+.auth *::before,
+.auth *::after {
+  box-sizing: border-box;
+}
+
+.auth :where(h1, h2, p, form) {
+  margin: 0;
+}
+
+.auth ::selection {
+  background: var(--red);
+  color: var(--ink);
+}
+
+.auth a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.auth input {
+  font-family: inherit;
+}
+
+/* ──────────────  Panneau gauche : typo cinetique  ────────────── */
+
+.typePane {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #101015, #07070a);
+}
+
+.typeTop {
+  position: absolute;
+  top: 40px;
+  left: 52px;
+  z-index: 4;
+}
+
+.typeTop img {
+  height: 30px;
+  display: block;
+}
+
+.marquee {
+  position: absolute;
+  left: -8px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  animation: marquee 26s linear infinite;
+  will-change: transform;
+}
+
+.marquee span {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 132px;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(235, 229, 210, 0.22);
+  white-space: nowrap;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.typeHeadline {
+  position: absolute;
+  bottom: 56px;
+  left: 52px;
+  right: 40px;
+  z-index: 4;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--red);
+}
+
+.lead {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(64px, 7vw, 92px);
+  line-height: 0.82;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.lead .accent {
+  color: var(--red);
+}
+
+.typeOv {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.typeOv.v {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 7, 10, 0.4),
+    transparent 30%,
+    transparent 55%,
+    rgba(7, 7, 10, 0.95)
+  );
+}
+
+.typeOv.h {
+  background: linear-gradient(90deg, transparent 70%, rgba(7, 7, 10, 0.6));
+}
+
+/* ──────────────  Panneau droit : formulaire  ────────────── */
+
+.formPane {
+  position: relative;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px 58px;
+}
+
+.formTop {
+  position: absolute;
+  top: 30px;
+  right: 58px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim-2);
+}
+
+.formTop svg {
+  width: 13px;
+  height: 13px;
+  color: var(--green);
+}
+
+.formWrap {
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
+}
+
+.formTitle {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 50px;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  margin-bottom: 5px;
+}
+
+.formDesc {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  margin-bottom: 34px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+
+.inputShell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+
+.inputShell:focus-within {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
+.inputShell input {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 13px 16px;
+}
+
+.inputShell input::placeholder {
+  color: var(--dim-2);
+}
+
+.togglePw {
+  background: transparent;
+  border: none;
+  color: var(--dim-2);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.togglePw:hover {
+  color: var(--ink);
+}
+
+.togglePw svg {
+  width: 17px;
+  height: 17px;
+}
+
+.rowBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 24px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkBox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-3);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.remember input:checked + .checkBox {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.checkBox svg {
+  width: 11px;
+  height: 11px;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.remember input:checked + .checkBox svg {
+  opacity: 1;
+}
+
+.lbl {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.forgot {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: transparent;
+  border: none;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.forgot:hover {
+  color: var(--ink);
+}
+
+.btnSubmit {
+  width: 100%;
+  padding: 15px;
+  background: var(--red);
+  border: 1px solid var(--red);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: background 0.16s, border-color 0.16s, transform 0.06s;
+}
+
+.btnSubmit:hover {
+  background: var(--red-deep);
+  border-color: var(--red-deep);
+}
+
+.btnSubmit:active {
+  transform: translateY(1px);
+}
+
+.btnSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSubmit svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.18s;
+}
+
+.btnSubmit:hover svg {
+  transform: translateX(4px);
+}
+
+.signup {
+  text-align: center;
+  margin-top: 22px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.signup a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--red);
+  padding-bottom: 2px;
+  transition: color 0.15s;
+}
+
+.signup a:hover {
+  color: var(--red);
+}
+
+.formFoot {
+  position: absolute;
+  bottom: 26px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim-2);
+}
+
+.msg {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  margin-top: 16px;
+}
+
+.msgError {
+  color: var(--red);
+}
+
+.msgOk {
+  color: var(--green);
+}
+
+@media (max-width: 1024px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .typePane {
+    min-height: 48vh;
+  }
+  .marquee span {
+    font-size: 92px;
+  }
+  .typeTop {
+    left: 40px;
+  }
+  .typeHeadline {
+    left: 40px;
+    right: 40px;
+    bottom: 44px;
+  }
+  .formPane {
+    padding: 64px 40px 72px;
+  }
+  .formTop {
+    right: 40px;
+  }
+}
+
+@media (max-width: 560px) {
+  .typePane {
+    min-height: 42vh;
+  }
+  .marquee span {
+    font-size: 68px;
+  }
+  .typeTop {
+    top: 26px;
+    left: 24px;
+  }
+  .typeTop img {
+    height: 26px;
+  }
+  .typeHeadline {
+    left: 24px;
+    right: 24px;
+    bottom: 30px;
+  }
+  .lead {
+    font-size: clamp(48px, 14vw, 68px);
+  }
+  .formPane {
+    padding: 48px 24px 64px;
+  }
+  .formTop {
+    display: none;
+  }
+  .formTitle {
+    font-size: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}

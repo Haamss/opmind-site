@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { isInstructorRole } from "../../../lib/roles";
 
 const FONT_RAJDHANI =
   "var(--font-rajdhani), 'Rajdhani', system-ui, sans-serif";
@@ -120,12 +121,11 @@ export default function DashboardSidebar({
     (profile?.email ? profile.email.split("@")[0] : "OpMind")
   ).toUpperCase();
   const role = (profile?.role || "shooter").toLowerCase();
-  const roleLabel =
-    role === "instructor"
-      ? "Instructeur · Pro"
-      : role === "club_manager"
-        ? "Responsable · Club"
-        : "Tireur";
+  const roleLabel = isInstructorRole(role)
+    ? "Instructeur · Pro"
+    : role === "club_manager"
+      ? "Responsable · Club"
+      : "Tireur";
 
   return (
     <aside

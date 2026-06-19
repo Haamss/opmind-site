@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { isInstructorRole } from "@/lib/roles";
 import styles from "@/components/dashboard/dashboard.module.css";
 
 /* ──────────────  Tokens (design system partagé via .page) ────────────── */
@@ -158,6 +159,10 @@ export default function ProfilPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<RoleValue>("TIREUR");
+  // Rôle dérivé au chargement : pour ne réécrire la colonne role que si
+  // l'utilisateur change explicitement le sélecteur (sinon on préserverait
+  // par écrasement une des 5 nouvelles valeurs de profil).
+  const [initialRole, setInitialRole] = useState<RoleValue>("TIREUR");
   const [club, setClub] = useState("");
   const [bio, setBio] = useState("");
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -226,13 +231,13 @@ export default function ProfilPage() {
         setMfaEnabled(Boolean(p.mfa_enabled));
         setChargeurs(normalizeChargeurs(pd.chargeurs));
         setCreatedAt(p.created_at ?? null);
-        setRole(
-          p.is_admin
-            ? "ADMIN"
-            : p.role === "instructor"
-              ? "INSTRUCTEUR"
-              : "TIREUR"
-        );
+        const derivedRole: RoleValue = p.is_admin
+          ? "ADMIN"
+          : isInstructorRole(p.role)
+            ? "INSTRUCTEUR"
+            : "TIREUR";
+        setRole(derivedRole);
+        setInitialRole(derivedRole);
 
         const { count: shootersCount } = await sb
           .from("instructor_shooters")
@@ -312,23 +317,30 @@ export default function ProfilPage() {
       const ln = lastName.trim();
       const pseudo = [fn, ln].filter(Boolean).join(" ") || fn || ln;
       const nextProfileData = { ...profileData, bio: bio.trim(), chargeurs };
-      const roleCol = role === "TIREUR" ? "shooter" : "instructor";
-      const isAdmin = role === "ADMIN";
 
-      const { error } = await sb.from("profiles").upsert(
-        {
-          id: userId,
-          first_name: fn,
-          last_name: ln,
-          pseudo,
-          club: club.trim() || null,
-          role: roleCol,
-          is_admin: isAdmin,
-          mfa_enabled: mfaEnabled,
-          profile_data: nextProfileData,
-        },
-        { onConflict: "id" }
-      );
+      const upsertRow: Record<string, unknown> = {
+        id: userId,
+        first_name: fn,
+        last_name: ln,
+        pseudo,
+        club: club.trim() || null,
+        mfa_enabled: mfaEnabled,
+        profile_data: nextProfileData,
+      };
+
+      // On ne touche au rôle que si l'utilisateur a explicitement changé le
+      // sélecteur (TIREUR/INSTRUCTEUR/ADMIN). Sinon on laisse la valeur DB
+      // intacte (préserve militaire/police/ipsc/instructeur/autre).
+      if (role !== initialRole) {
+        // TIREUR -> "shooter" (fonction tireur) ; INSTRUCTEUR/ADMIN ->
+        // "instructeur" (fonction instructeur), is_admin distingue l'admin.
+        upsertRow.role = role === "TIREUR" ? "shooter" : "instructeur";
+        upsertRow.is_admin = role === "ADMIN";
+      }
+
+      const { error } = await sb
+        .from("profiles")
+        .upsert(upsertRow, { onConflict: "id" });
       if (!error) {
         setProfileData(nextProfileData);
         setSaved(true);

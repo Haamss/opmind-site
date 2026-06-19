@@ -4,35 +4,43 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "../../lib/supabase";
+import { ROLE_OPTIONS } from "../../lib/roles";
+import styles from "./register.module.css";
 
-type Strength = "empty" | "weak" | "medium" | "strong";
+const MARQUEE_WORDS = [
+  "Précision",
+  "Cadence",
+  "Contrôle",
+  "Sang-froid",
+  "Répétition",
+  "Focus",
+];
 
-function computeStrength(pwd: string): Strength {
-  if (!pwd) return "empty";
-  if (pwd.length < 8) return "weak";
-  if (pwd.length > 12 && /[A-Z]/.test(pwd) && /\d/.test(pwd)) return "strong";
-  return "medium";
+/** Force du mot de passe, score 0-4 (signal de force, pas la marque). */
+function passwordScore(pwd: string): number {
+  let score = 0;
+  if (pwd.length >= 8) score += 1;
+  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
+  if (/\d/.test(pwd)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+  return score;
 }
-
-const STRENGTH_META: Record<
-  Strength,
-  { label: string; width: string; color: string }
-> = {
-  empty: { label: "", width: "0%", color: "transparent" },
-  weak: { label: "Faible", width: "33%", color: "#e84a3a" },
-  medium: { label: "Moyen", width: "66%", color: "#f5a623" },
-  strong: { label: "Fort", width: "100%", color: "#5ad99b" },
-};
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPwd, setShowPwd] = useState(false);
-  const [pwd, setPwd] = useState("");
 
-  const strength = computeStrength(pwd);
-  const meta = STRENGTH_META[strength];
+  const [role, setRole] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [pwd2, setPwd2] = useState("");
+  const [cgu, setCgu] = useState(false);
+  const [rgpd, setRgpd] = useState(false);
+
+  const score = passwordScore(pwd);
+  const meterClass = score > 0 ? styles[`s${score}`] : "";
+  const matchState = pwd2.length === 0 ? "" : pwd === pwd2 ? "match" : "nomatch";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,11 +51,6 @@ export default function RegisterPage() {
     const firstName = String(fd.get("first_name") ?? "").trim();
     const lastName = String(fd.get("last_name") ?? "").trim();
     const email = String(fd.get("email") ?? "").trim();
-    const password = String(fd.get("password") ?? "");
-    const confirm = String(fd.get("confirm_password") ?? "");
-    const role = String(fd.get("role") ?? "");
-    const cgu = fd.get("cgu") === "on";
-    const rgpd = fd.get("rgpd") === "on";
 
     if (!firstName || !lastName) {
       setError("Prénom et nom obligatoires.");
@@ -57,11 +60,11 @@ export default function RegisterPage() {
       setError("Choisis ton rôle.");
       return;
     }
-    if (password.length < 8) {
+    if (pwd.length < 8) {
       setError("Mot de passe trop court (8 caractères minimum).");
       return;
     }
-    if (password !== confirm) {
+    if (pwd !== pwd2) {
       setError("Les mots de passe ne correspondent pas.");
       return;
     }
@@ -73,7 +76,7 @@ export default function RegisterPage() {
     setLoading(true);
     const { error: signUpError } = await getSupabase().auth.signUp({
       email,
-      password,
+      password: pwd,
       options: {
         data: { first_name: firstName, last_name: lastName, role },
       },
@@ -92,139 +95,147 @@ export default function RegisterPage() {
     router.push("/dashboard");
   }
 
-  const inputClass =
-    "mt-2 block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none";
-  const labelClass =
-    "block font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#888]";
-
   return (
-    <main
-      style={{
-        display: "flex",
-        width: "100vw",
-        height: "100vh",
-        fontFamily: "var(--font-geist-sans), sans-serif",
-      }}
-    >
-      {/* COLONNE GAUCHE */}
-      <aside
-        style={{
-          width: "40%",
-          height: "100%",
-          background: "#0a0a0c",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "0 64px",
-          position: "relative",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ position: "absolute", top: 32, left: 32 }}>
-          <OpMindLogo />
+    <main className={styles.auth}>
+      {/* COLONNE GAUCHE — typo cinetique */}
+      <section className={styles.typePane}>
+        <div className={styles.typeTop}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="OpMind" />
         </div>
-        <h1
-          style={{
-            fontFamily: "Antonio, sans-serif",
-            fontSize: "clamp(48px, 5vw, 80px)",
-            lineHeight: 0.95,
-            letterSpacing: "-0.03em",
-            textTransform: "uppercase",
-            color: "#ebe5d2",
-            margin: 0,
-          }}
-        >
-          REJOINS<br />OPMIND.
-        </h1>
-        <p
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 11,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "rgba(235,229,210,0.45)",
-            marginTop: 16,
-          }}
-        >
-          MESURE TA PROGRESSION. STRUCTURE TON TIR.
-        </p>
-      </aside>
+        <div className={styles.marquee} aria-hidden="true">
+          {[...MARQUEE_WORDS, ...MARQUEE_WORDS].map((w, i) => (
+            <span key={i}>{w}</span>
+          ))}
+        </div>
+        <div className={`${styles.typeOv} ${styles.v}`} />
+        <div className={`${styles.typeOv} ${styles.h}`} />
+        <div className={styles.typeHeadline}>
+          <div className={styles.eyebrow}>L&apos;entraînement du tireur pro</div>
+          <h1 className={styles.lead}>
+            Rejoins
+            <br />
+            l&apos;<span className={styles.accent}>élite.</span>
+          </h1>
+        </div>
+      </section>
 
-      {/* COLONNE DROITE */}
-      <div
-        style={{
-          flex: 1,
-          height: "100%",
-          background: "#0d0d12",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "0 64px",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 400 }}>
-          <h2 className="font-mono text-2xl font-bold uppercase tracking-[0.2em] text-[#ebe5d2]">
-            Créer un compte
-          </h2>
+      {/* COLONNE DROITE — formulaire */}
+      <section className={styles.formPane}>
+        <div className={styles.formTop}>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect
+              x="4"
+              y="10"
+              width="16"
+              height="11"
+              rx="1.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            />
+            <path
+              d="M8 10V7a4 4 0 0 1 8 0v3"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            />
+          </svg>
+          Inscription sécurisée
+        </div>
 
-          <form onSubmit={onSubmit} className="mt-12 space-y-6" noValidate>
-            {/* First + Last name */}
-            <div className="grid grid-cols-2 gap-4">
-              <label className="block">
-                <span className={labelClass}>Prénom</span>
-                <input
-                  type="text"
-                  name="first_name"
-                  autoComplete="given-name"
-                  required
-                  className={inputClass}
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Nom</span>
-                <input
-                  type="text"
-                  name="last_name"
-                  autoComplete="family-name"
-                  required
-                  className={inputClass}
-                />
-              </label>
+        <div className={styles.formWrap}>
+          <h2 className={styles.formTitle}>Inscription</h2>
+          <p className={styles.formDesc}>Crée ton espace tireur professionnel</p>
+
+          <form onSubmit={onSubmit} autoComplete="on" noValidate>
+            <div className={`${styles.field} ${styles.grid2}`}>
+              <div>
+                <label htmlFor="first_name">Prénom</label>
+                <div className={styles.inputShell}>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    placeholder="Alex"
+                    autoComplete="given-name"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="last_name">Nom</label>
+                <div className={styles.inputShell}>
+                  <input
+                    type="text"
+                    id="last_name"
+                    name="last_name"
+                    placeholder="Martin"
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Email */}
-            <label className="block">
-              <span className={labelClass}>Email</span>
-              <input
-                type="email"
-                name="email"
-                placeholder="ton@email.fr"
-                autoComplete="email"
-                required
-                className={inputClass}
-              />
-            </label>
+            <div className={styles.field}>
+              <label htmlFor="email">Email</label>
+              <div className={styles.inputShell}>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="prenom.nom@unite.fr"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
 
-            {/* Password + strength bar */}
-            <label className="block">
-              <span className={labelClass}>Mot de passe</span>
-              <div className="relative mt-2">
+            <div className={styles.field}>
+              <label htmlFor="role">Rôle</label>
+              <div className={styles.inputShell}>
+                <select
+                  id="role"
+                  name="role"
+                  required
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Choisir un rôle
+                  </option>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <span className={styles.selectCaret}>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="password">Mot de passe</label>
+              <div className={styles.inputShell}>
                 <input
                   type={showPwd ? "text" : "password"}
+                  id="password"
                   name="password"
-                  placeholder="••••••••"
+                  placeholder="••••••••••••"
                   autoComplete="new-password"
-                  required
                   value={pwd}
                   onChange={(e) => setPwd(e.target.value)}
-                  className="block w-full border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 pr-10 font-mono text-[13px] text-[#ebe5d2] placeholder:text-[#555] transition-colors focus:border-[#7A0000] focus:outline-none"
                 />
                 <button
                   type="button"
+                  className={styles.togglePw}
                   onClick={() => setShowPwd((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-2 text-[#888] transition-colors hover:text-[#ebe5d2]"
                   aria-label={
                     showPwd
                       ? "Masquer le mot de passe"
@@ -232,193 +243,160 @@ export default function RegisterPage() {
                   }
                   aria-pressed={showPwd}
                 >
-                  {showPwd ? <EyeOffIcon /> : <EyeIcon />}
+                  {showPwd ? <EyeOffIcon /> : <EyeOpenIcon />}
                 </button>
               </div>
-              <div className="mt-2 h-[3px] w-full bg-[rgba(235,229,210,0.08)]">
-                <div
-                  className="h-full transition-all duration-200"
-                  style={{ width: meta.width, backgroundColor: meta.color }}
-                />
+              <div className={`${styles.pwMeter} ${meterClass}`} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
               </div>
-              {strength !== "empty" && (
-                <p
-                  className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em]"
-                  style={{ color: meta.color }}
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="password2">Confirmer le mot de passe</label>
+              <div className={styles.inputShell}>
+                <input
+                  type={showPwd ? "text" : "password"}
+                  id="password2"
+                  name="password2"
+                  placeholder="••••••••••••"
+                  autoComplete="new-password"
+                  value={pwd2}
+                  onChange={(e) => setPwd2(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className={styles.togglePw}
+                  onClick={() => setShowPwd((v) => !v)}
+                  aria-label={
+                    showPwd
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  aria-pressed={showPwd}
                 >
-                  {meta.label}
-                </p>
-              )}
-            </label>
-
-            {/* Confirm password */}
-            <label className="block">
-              <span className={labelClass}>Confirmer mot de passe</span>
-              <input
-                type={showPwd ? "text" : "password"}
-                name="confirm_password"
-                placeholder="••••••••"
-                autoComplete="new-password"
-                required
-                className={inputClass}
-              />
-            </label>
-
-            {/* Role */}
-            <label className="block">
-              <span className={labelClass}>Rôle</span>
-              <select
-                name="role"
-                required
-                defaultValue=""
-                className="mt-2 block w-full appearance-none border-x-0 border-t-0 border-b border-[rgba(235,229,210,0.2)] bg-[#0a0a0c] px-1 py-3 pr-8 font-mono text-[13px] text-[#ebe5d2] transition-colors focus:border-[#7A0000] focus:outline-none"
-                style={{
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 4px center",
-                  backgroundSize: "12px",
-                }}
+                  {showPwd ? <EyeOffIcon /> : <EyeOpenIcon />}
+                </button>
+              </div>
+              <div
+                className={`${styles.pwHint} ${
+                  matchState ? styles[matchState] : ""
+                }`}
+                aria-live="polite"
               >
-                <option value="" disabled>
-                  Choisir un rôle
-                </option>
-                <option value="shooter">TIREUR SPORTIF</option>
-                <option value="instructor">INSTRUCTEUR</option>
-                <option value="club_manager">RESPONSABLE DE CLUB</option>
-              </select>
-            </label>
+                {matchState === "match"
+                  ? "Les mots de passe correspondent"
+                  : matchState === "nomatch"
+                    ? "Les mots de passe ne correspondent pas"
+                    : ""}
+              </div>
+            </div>
 
-            {/* Checkboxes — CGU + RGPD */}
-            <div className="space-y-3 pt-2">
-              <label className="flex cursor-pointer items-start gap-3">
+            <div className={styles.consents}>
+              <label className={styles.consent}>
                 <input
                   type="checkbox"
                   name="cgu"
-                  required
-                  className="mt-[2px] h-4 w-4 cursor-pointer appearance-none border border-[rgba(235,229,210,0.3)] bg-transparent transition-colors checked:border-[#7A0000] checked:bg-[#7A0000] focus:outline-none"
+                  checked={cgu}
+                  onChange={(e) => setCgu(e.target.checked)}
                 />
-                <span className="font-mono text-[11px] leading-relaxed text-[#888]">
+                <span className={styles.checkBox}>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M5 12l5 5L20 6"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                    />
+                  </svg>
+                </span>
+                <span className={styles.lbl}>
                   J&apos;accepte les{" "}
-                  <Link
-                    href="/cgu"
-                    className="text-[#ebe5d2] underline decoration-[#7A0000] underline-offset-2 transition hover:decoration-[#ebe5d2]"
-                  >
-                    conditions d&apos;utilisation
-                  </Link>
+                  <Link href="/cgu">conditions d&apos;utilisation</Link>
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-3">
+              <label className={styles.consent}>
                 <input
                   type="checkbox"
                   name="rgpd"
-                  required
-                  className="mt-[2px] h-4 w-4 cursor-pointer appearance-none border border-[rgba(235,229,210,0.3)] bg-transparent transition-colors checked:border-[#7A0000] checked:bg-[#7A0000] focus:outline-none"
+                  checked={rgpd}
+                  onChange={(e) => setRgpd(e.target.checked)}
                 />
-                <span className="font-mono text-[11px] leading-relaxed text-[#888]">
+                <span className={styles.checkBox}>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M5 12l5 5L20 6"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                    />
+                  </svg>
+                </span>
+                <span className={styles.lbl}>
                   Je consens au{" "}
-                  <Link
-                    href="/confidentialite"
-                    className="text-[#ebe5d2] underline decoration-[#7A0000] underline-offset-2 transition hover:decoration-[#ebe5d2]"
-                  >
-                    traitement de mes données
-                  </Link>
+                  <Link href="/confidentialite">traitement de mes données</Link>
                 </span>
               </label>
             </div>
 
             <button
               type="submit"
+              className={styles.btnSubmit}
               disabled={loading}
-              className="mt-2 w-full bg-[#7A0000] px-4 py-[14px] font-mono text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#5A0000] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Création en cours..." : "Créer mon compte"}
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M5 12h14M13 6l6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+              </svg>
             </button>
 
             {error && (
-              <p
-                role="alert"
-                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#e84a3a]"
-              >
+              <p role="alert" className={`${styles.msg} ${styles.msgError}`}>
                 {error}
               </p>
             )}
-
-            <p className="pt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#888]">
-              Déjà un compte ?{" "}
-              <Link
-                href="/login"
-                className="text-[#ebe5d2] transition hover:text-[#7A0000]"
-              >
-                Se connecter →
-              </Link>
-            </p>
           </form>
+
+          <div className={styles.signup}>
+            Déjà un compte ? <Link href="/login">Se connecter</Link>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }
 
-function OpMindLogo({ className = "h-7 w-auto" }: { className?: string }) {
+function EyeOpenIcon() {
   return (
-    <svg
-      viewBox="0 0 130 32"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="OpMind"
-      className={className}
-    >
-      <text
-        x="0"
-        y="25"
-        fontFamily="'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif"
-        fontSize="28"
-        fontWeight="800"
-        letterSpacing="-0.5"
-        fill="#ebe5d2"
-      >
-        OpMind<tspan fill="#7A0000">.</tspan>
-      </text>
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }
 
 function EyeOffIcon() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.7 19.7 0 0 1 4.22-5.43" />
-      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.66 19.66 0 0 1-3.36 4.41" />
-      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M10.6 6.2A9.7 9.7 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3 3.6M6.3 7.8A17 17 0 0 0 2 12s3.6 6 10 6a9.6 9.6 0 0 0 3.3-.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M9.5 10.4a3 3 0 0 0 4.1 4.2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
     </svg>
   );
 }

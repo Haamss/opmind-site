@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "../../lib/supabase";
+import { ROLE_OPTIONS, isShooterRole } from "../../lib/roles";
 
 /* ──────────────  Types  ────────────── */
 
@@ -359,7 +360,7 @@ export default function DashboardPage() {
               setView={selectView}
               onDelete={onDeleteSession}
               onEdit={startEditSession}
-              isShooter={(profile?.role ?? "") === "shooter"}
+              isShooter={isShooterRole(profile?.role)}
             />
           )}
           {view === "performance" && (
@@ -509,7 +510,7 @@ function Topbar({
     profile?.email ||
     "Utilisateur";
   // Le tireur crée ses séances depuis l'app (écriture web = table legacy).
-  const isShooter = (profile?.role ?? "") === "shooter";
+  const isShooter = isShooterRole(profile?.role);
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -938,7 +939,7 @@ function HomeView({
           gap: 16,
         }}
       >
-        {(profile?.role ?? "") !== "shooter" && (
+        {!isShooterRole(profile?.role) && (
           <QuickAction
             title="Créer une séance"
             subtitle="Drill builder · Export app"
@@ -6505,11 +6506,7 @@ function ProfileView({
     router.push("/login");
   }
 
-  const ROLES: { value: string; label: string }[] = [
-    { value: "shooter", label: "TIREUR SPORTIF" },
-    { value: "instructor", label: "INSTRUCTEUR" },
-    { value: "club_manager", label: "RESPONSABLE DE CLUB" },
-  ];
+  const ROLES = ROLE_OPTIONS;
 
   const roleLabel =
     ROLES.find((r) => r.value === (profile?.role ?? ""))?.label || "—";

@@ -11,6 +11,7 @@ import {
   fetchUnifiedSessions,
   formatDate,
   isPro,
+  resolveShooterNames,
   type ModuleSessionRow,
   type SessionFeedbackRow,
 } from "@/components/dashboard/data";
@@ -135,11 +136,13 @@ function ShooterDetail() {
           .maybeSingle();
         if (prof?.pseudo) pseudo = prof.pseudo;
       }
-      const [ss, aa] = await Promise.all([
+      const [ss, aa, [resolvedShooter]] = await Promise.all([
         fetchUnifiedSessions([shooterRow as Shooter]),
         fetchAssignments([id]),
+        // Nom affiché = profil lié (shooter_id renseigné) ; sinon libellé manuel.
+        resolveShooterNames([shooterRow as Shooter]),
       ]);
-      setShooter(shooterRow as Shooter);
+      setShooter(resolvedShooter ?? (shooterRow as Shooter));
       setSessions(ss);
       setAssignments(aa);
       setInstructorName(pseudo);

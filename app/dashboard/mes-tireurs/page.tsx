@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "../../../lib/supabase";
-import { fetchUnifiedSessions } from "../../../components/dashboard/data";
+import {
+  fetchUnifiedSessions,
+  resolveShooterNames,
+} from "../../../components/dashboard/data";
 import { moduleLabel } from "../../../components/dashboard/modules";
 import { fmtDot } from "../../../components/dashboard/format";
 import { EmptyState } from "../../../components/dashboard/ui";
@@ -211,7 +214,8 @@ export default function MesTireursPage() {
           .eq("instructor_id", userId)
           .order("linked_at", { ascending: false });
 
-        const list = (rows as Shooter[] | null) || [];
+        // Nom affiché = profil lié (shooter_id renseigné) ; sinon libellé manuel.
+        const list = await resolveShooterNames((rows as Shooter[] | null) || []);
         // Source unifiée : manual_sessions + module_sessions (activité réelle app).
         const unified = await fetchUnifiedSessions(list);
         const sessionsByShooter = unified.reduce<

@@ -19,6 +19,52 @@ export interface ModuleSessionRow {
   hit_factor: number | null;
 }
 
+/**
+ * Résolution à l'affichage du nom d'un tireur.
+ *
+ * Une ligne instructor_shooters dont `shooter_id` est renseigné = un vrai compte
+ * tireur lié : le nom affiché doit venir du PROFIL lié
+ * (profiles.first_name/last_name), pas du champ `name` saisi par l'instructeur.
+ * `name` n'est qu'un libellé de secours pour les entrées manuelles NON liées
+ * (shooter_id NULL). Résolution lecture seule : on remplace `name` en mémoire,
+ * jamais en base. La RLS « Instructors can view shooter profiles » autorise la
+ * lecture des profils liés ; toute erreur/absence retombe sur le libellé existant.
+ */
+export async function resolveShooterNames(
+  shooters: Shooter[]
+): Promise<Shooter[]> {
+  const linkedIds = Array.from(
+    new Set(
+      shooters
+        .map((s) => s.shooter_id)
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+    )
+  );
+  if (linkedIds.length === 0) return shooters;
+
+  const { data, error } = await getSupabase()
+    .from("profiles")
+    .select("id,first_name,last_name")
+    .in("id", linkedIds);
+  if (error || !data) return shooters;
+
+  const byId = new Map<string, string>();
+  for (const p of data as {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+  }[]) {
+    const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+    if (full) byId.set(p.id, full);
+  }
+
+  return shooters.map((s) => {
+    if (!s.shooter_id) return s;
+    const full = byId.get(s.shooter_id);
+    return full ? { ...s, name: full } : s;
+  });
+}
+
 export async function fetchShooters(): Promise<Shooter[]> {
   const { data, error } = await getSupabase()
     .from("instructor_shooters")
@@ -27,7 +73,7 @@ export async function fetchShooters(): Promise<Shooter[]> {
     )
     .order("linked_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as Shooter[];
+  return resolveShooterNames((data ?? []) as Shooter[]);
 }
 
 export async function fetchSessions(

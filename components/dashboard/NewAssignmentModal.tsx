@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { AssignmentType, ModuleKind } from "./types";
 
@@ -26,6 +26,12 @@ const MODULE_KINDS: { v: ModuleKind; l: string }[] = [
   { v: "degrade", l: "Dégradé" },
 ];
 
+interface CatalogSession {
+  id: string;
+  ref_key: string;
+  name: string;
+}
+
 export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
   const [type, setType] = useState<AssignmentType>("module");
   const [moduleKind, setModuleKind] = useState<ModuleKind>("basique");
@@ -34,6 +40,31 @@ export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
   const [deadline, setDeadline] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<CatalogSession[]>([]);
+  const [sessionId, setSessionId] = useState<string>("");
+
+  useEffect(() => {
+    if (type !== "module") {
+      setSessions([]);
+      setSessionId("");
+      return;
+    }
+    setSessionId("");
+    let cancelled = false;
+    (async () => {
+      const { data, error: catErr } = await getSupabase()
+        .from("session_catalog")
+        .select("id, ref_key, name")
+        .eq("module_kind", moduleKind)
+        .eq("active", true)
+        .order("position");
+      if (cancelled) return;
+      setSessions(catErr || !data ? [] : (data as CatalogSession[]));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [type, moduleKind]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +84,8 @@ export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
         deadline: string | null;
         status: "pending";
         module_kind?: ModuleKind;
+        content?: { ref_key: string; name: string };
+        ref_id?: string;
       } = {
         instructor_shooter_id: shooterId,
         type,
@@ -61,7 +94,14 @@ export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
         deadline: deadline ? new Date(deadline).toISOString() : null,
         status: "pending",
       };
-      if (type === "module") payload.module_kind = moduleKind;
+      if (type === "module") {
+        payload.module_kind = moduleKind;
+        const selected = sessions.find((s) => s.id === sessionId);
+        if (selected) {
+          payload.content = { ref_key: selected.ref_key, name: selected.name };
+          payload.ref_id = selected.id;
+        }
+      }
 
       const { error: insertError } = await getSupabase()
         .from("instructor_assignments")
@@ -129,6 +169,33 @@ export function NewAssignmentModal({ shooterId, onClose, onCreated }: Props) {
                     {m.l}
                   </button>
                 ))}
+              </div>
+            </Field>
+          )}
+
+          {type === "module" && sessions.length > 0 && (
+            <Field label="Séance du catalogue">
+              <div className="relative">
+                <select
+                  value={sessionId}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSessionId(v);
+                    const sel = sessions.find((s) => s.id === v);
+                    if (sel && !title.trim()) setTitle(sel.name);
+                  }}
+                  className="w-full cursor-pointer appearance-none border border-[#1A1A1A] bg-black px-3 py-2.5 font-mono text-sm text-white outline-none transition-colors focus:border-[#7A0000]"
+                >
+                  <option value="">— Aucune (assignation générique) —</option>
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[#888]">
+                  ▾
+                </span>
               </div>
             </Field>
           )}

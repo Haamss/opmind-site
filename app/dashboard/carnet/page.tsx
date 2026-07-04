@@ -7,6 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 import styles from "@/components/dashboard/dashboard.module.css";
 import { Breadcrumb, EmptyState } from "@/components/dashboard/ui";
 import { formatDate } from "@/components/dashboard/data";
+import { RangeLogForm } from "@/components/dashboard/RangeLogForm";
 import type { Shooter } from "@/components/dashboard/types";
 import {
   fetchRangeLogEntries,
@@ -70,6 +71,7 @@ function CarnetDetail() {
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -204,6 +206,19 @@ function CarnetDetail() {
             <div className={styles.meta}>{entries.length} entrées</div>
           </div>
 
+          <div className={styles["action-bar"]}>
+            <button
+              type="button"
+              onClick={() => setFormOpen(true)}
+              className={styles["btn-red"]}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+              Saisir une séance
+            </button>
+          </div>
+
           {actionError && (
             <div className="mb-4 border border-[#E84040]/50 bg-[#E84040]/[0.08] px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-[#E84040]">
               {actionError}
@@ -244,6 +259,14 @@ function CarnetDetail() {
                 />
               ))}
             </div>
+          )}
+
+          {formOpen && (
+            <RangeLogForm
+              shooter={shooter}
+              onClose={() => setFormOpen(false)}
+              onCreated={() => load()}
+            />
           )}
         </>
       )}

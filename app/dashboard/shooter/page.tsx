@@ -999,6 +999,12 @@ function ShooterDetail() {
             >
               + Assignation rapide
             </button>
+            <Link
+              href={`/dashboard/carnet/?id=${shooter.id}`}
+              className={styles["btn-ghost"]}
+            >
+              Carnet réglementaire
+            </Link>
           </div>
 
           {assignments.length === 0 ? (

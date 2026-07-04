@@ -50,6 +50,14 @@ const VERDICT_COLOR: Record<ComplianceVerdict, string> = {
 // Date · Régime · Type · Munitions · Durée · Arme · Statut
 const CARNET_COLS = "96px 130px minmax(0,1fr) 90px 80px minmax(0,1fr) 110px";
 
+/** Minutes → « Xh » si pile, sinon « XhYY » (ex: 30 → « 0h30 », 90 → « 1h30 »).
+ *  Exact, jamais arrondi à l'heure. */
+function fmtHours(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
+}
+
 /* ────────────────────────────── Page ─────────────────────────────────── */
 
 export default function CarnetPage() {
@@ -315,7 +323,6 @@ function ComplianceStrip({
         const c = compliance.find((x) => x.regime === r);
         const sessions = c?.validated_sessions_12m ?? 0;
         const minutes = c?.validated_minutes_12m ?? 0;
-        const hours = Math.round(minutes / 60);
         const rounds = c?.validated_rounds_12m ?? 0;
         const result = evaluateCompliance({
           regime: r,
@@ -343,7 +350,7 @@ function ComplianceStrip({
               <span className={styles.unit}> séances</span>
             </span>
             <span className={styles["kpi-sub"]}>
-              {hours} h · {rounds} cartouches · {result.requirement}
+              {fmtHours(minutes)} · {rounds} cartouches · {result.requirement}
             </span>
           </div>
         );

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { getSupabase } from "@/lib/supabase";
 import styles from "@/components/dashboard/dashboard.module.css";
+import { accuracyPct } from "@/components/dashboard/format";
 
 /* ──────────────  Tokens (design system partagé via .page) ────────────── */
 
@@ -294,7 +295,7 @@ export default function ParametresPage() {
         const sess = sessionsByShooter[sh.id] || [];
         const meanScore = avg(sess.map((x) => Number(x.normalized_score) || 0));
         const meanAcc = avg(
-          sess.map((x) => (Number(x.accuracy) || 0) * 100)
+          sess.map((x) => accuracyPct(Number(x.accuracy)) ?? 0)
         );
         const last = sess
           .map((x) => isoDate(x.date))

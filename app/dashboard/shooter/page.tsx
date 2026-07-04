@@ -25,6 +25,7 @@ import {
   modChartColor,
   moduleBadgeClass,
   moduleShort,
+  accuracyPct,
 } from "@/components/dashboard/format";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
@@ -547,7 +548,7 @@ function ShooterDetail() {
               >
                 {stats.lastAccuracy !== null ? (
                   <>
-                    {(stats.lastAccuracy * 100).toFixed(0)}
+                    {accuracyPct(stats.lastAccuracy)?.toFixed(0)}
                     <span className={styles.unit}>%</span>
                   </>
                 ) : (
@@ -873,7 +874,7 @@ function ShooterDetail() {
                       <span className={styles.num}>{s.total_shots ?? "—"}</span>
                       <span className={`${styles.num} ${styles.acc}`}>
                         {typeof s.accuracy === "number"
-                          ? `${(s.accuracy * 100).toFixed(0)}%`
+                          ? `${accuracyPct(s.accuracy)?.toFixed(0)}%`
                           : "—"}
                       </span>
                       <span
@@ -1191,7 +1192,7 @@ function LinkedSessionModal({
                 label="Précision"
                 value={
                   typeof session.accuracy === "number"
-                    ? `${(session.accuracy * 100).toFixed(0)}%`
+                    ? `${accuracyPct(session.accuracy)?.toFixed(0)}%`
                     : "—"
                 }
               />

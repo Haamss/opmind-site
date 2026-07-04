@@ -51,3 +51,10 @@ export function fmtSlash(iso: string): string {
     d.getMonth() + 1
   ).padStart(2, "0")}`;
 }
+
+// accuracy sur 2 échelles : module_sessions 0-100, manual_sessions 0-1.
+// Normalise vers 0-100 (aucune valeur réelle entre 0.95 et 64 → frontière sûre).
+export function accuracyPct(a: number | null | undefined): number | null {
+  if (a == null || Number.isNaN(a)) return null;
+  return a <= 1.5 ? a * 100 : a;
+}

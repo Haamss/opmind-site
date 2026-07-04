@@ -8,7 +8,7 @@ import {
   resolveShooterNames,
 } from "../../../components/dashboard/data";
 import { moduleLabel } from "../../../components/dashboard/modules";
-import { fmtDot } from "../../../components/dashboard/format";
+import { fmtDot, accuracyPct } from "../../../components/dashboard/format";
 import { EmptyState } from "../../../components/dashboard/ui";
 import styles from "../../../components/dashboard/dashboard.module.css";
 import type {
@@ -95,7 +95,7 @@ function deriveShooter(
   const lastScore =
     last && typeof last.normalized_score === "number" ? last.normalized_score : 0;
   const lastAcc =
-    last && typeof last.accuracy === "number" ? last.accuracy * 100 : 0;
+    last && typeof last.accuracy === "number" ? accuracyPct(last.accuracy) ?? 0 : 0;
   const lastHitFactor =
     last && typeof last.hit_factor === "number" ? last.hit_factor : null;
 
@@ -105,7 +105,7 @@ function deriveShooter(
   const prevScore =
     prev && typeof prev.normalized_score === "number" ? prev.normalized_score : 0;
   const prevAcc =
-    prev && typeof prev.accuracy === "number" ? prev.accuracy * 100 : 0;
+    prev && typeof prev.accuracy === "number" ? accuracyPct(prev.accuracy) ?? 0 : 0;
   const scoreDelta = prevScore > 0 ? Math.round(lastScore - prevScore) : 0;
   const accDelta = prevAcc > 0 ? Math.round(lastAcc - prevAcc) : 0;
   // Volume récent = comptage 30j (un nombre, pas une moyenne).

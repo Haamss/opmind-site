@@ -8,6 +8,10 @@ import styles from "@/components/dashboard/dashboard.module.css";
 import { Breadcrumb, EmptyState } from "@/components/dashboard/ui";
 import { formatDate } from "@/components/dashboard/data";
 import { RangeLogForm } from "@/components/dashboard/RangeLogForm";
+import {
+  evaluateCompliance,
+  type ComplianceVerdict,
+} from "@/lib/complianceThresholds";
 import type { Shooter } from "@/components/dashboard/types";
 import {
   fetchRangeLogEntries,
@@ -36,6 +40,11 @@ const STATUS_COLOR: Record<ValidationStatus, string> = {
   pending: "#FFB300",
   validated: "#5ad99b",
   rejected: "#E84040",
+};
+const VERDICT_COLOR: Record<ComplianceVerdict, string> = {
+  conforme: "#5ad99b",
+  non_conforme: "#E84040",
+  na: "#888888",
 };
 
 // Date · Régime · Type · Munitions · Durée · Arme · Statut
@@ -194,8 +203,8 @@ function CarnetDetail() {
             </div>
           </div>
 
-          {/* CONFORMITÉ — compteurs bruts (verdict branché au commit suivant) */}
-          <ComplianceStrip compliance={compliance} />
+          {/* CONFORMITÉ — verdict + compteurs 12 mois */}
+          <ComplianceStrip compliance={compliance} entries={entries} />
 
           {/* SÉANCES */}
           <div className={styles["section-head"]}>
@@ -276,24 +285,57 @@ function CarnetDetail() {
 
 /* ────────────────────────── Conformité (compteurs) ───────────────────── */
 
-function ComplianceStrip({ compliance }: { compliance: RegimeCompliance[] }) {
+function ComplianceStrip({
+  compliance,
+  entries,
+}: {
+  compliance: RegimeCompliance[];
+  entries: RangeLogEntry[];
+}) {
   const regimes = Object.keys(REGIME_LABELS) as Regime[];
+  // Séances 'tir_controle' validées sur 12 mois glissants (seuil club) : la vue
+  // agrégée ne distingue pas le type, on le dérive des entrées chargées (D3).
+  const cutoff = Date.now() - 365 * 86400000;
+  const tirControleByRegime = new Map<Regime, number>();
+  for (const e of entries) {
+    if (
+      e.session_type === "tir_controle" &&
+      e.validation_status === "validated" &&
+      +new Date(e.date) >= cutoff
+    ) {
+      tirControleByRegime.set(
+        e.regime,
+        (tirControleByRegime.get(e.regime) ?? 0) + 1
+      );
+    }
+  }
   return (
     <div className={styles["kpi-grid"]} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
       {regimes.map((r) => {
         const c = compliance.find((x) => x.regime === r);
         const sessions = c?.validated_sessions_12m ?? 0;
-        const hours = Math.round((c?.validated_minutes_12m ?? 0) / 60);
+        const minutes = c?.validated_minutes_12m ?? 0;
+        const hours = Math.round(minutes / 60);
         const rounds = c?.validated_rounds_12m ?? 0;
+        const result = evaluateCompliance({
+          regime: r,
+          sessions12m: sessions,
+          minutes12m: minutes,
+          rounds12m: rounds,
+          tirControle12m: tirControleByRegime.get(r) ?? 0,
+        });
         return (
           <div key={r} className={styles.kpi}>
             <div className={styles["kpi-head"]}>
               <span className={styles["kpi-l"]}>{REGIME_LABELS[r]}</span>
               <span
                 className={`${styles["kpi-badge"]} ${styles.flat}`}
-                style={{ color: REGIME_COLOR[r], borderColor: REGIME_COLOR[r] }}
+                style={{
+                  color: VERDICT_COLOR[result.verdict],
+                  borderColor: VERDICT_COLOR[result.verdict],
+                }}
               >
-                12 mois
+                {result.label}
               </span>
             </div>
             <span className={styles["kpi-v"]} style={{ fontSize: 34 }}>
@@ -301,7 +343,7 @@ function ComplianceStrip({ compliance }: { compliance: RegimeCompliance[] }) {
               <span className={styles.unit}> séances</span>
             </span>
             <span className={styles["kpi-sub"]}>
-              {hours} h · {rounds} cartouches (validées)
+              {hours} h · {rounds} cartouches · {result.requirement}
             </span>
           </div>
         );

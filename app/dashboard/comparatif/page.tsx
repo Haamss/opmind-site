@@ -26,6 +26,7 @@ import type {
   ManualSession,
   ShooterWithStats,
 } from "@/components/dashboard/types";
+import { basiquePrecision } from "@/components/dashboard/scoring";
 
 // Tokens charte dupliqués pour recharts : var(--...) ne se résout pas
 // dans les attributs SVG (stroke/fill). À garder synchronisés avec
@@ -113,9 +114,10 @@ export default function ComparatifPage() {
   }, [shooters, visibleIds]);
 
   const ranking = useMemo(() => {
-    return [...shooters]
-      .filter((s) => s.avgScore !== null)
-      .sort((a, b) => (b.avgScore as number) - (a.avgScore as number));
+    return shooters
+      .map((s) => ({ shooter: s, basique: basiquePrecision(s.sessions) }))
+      .filter((r) => r.basique !== null)
+      .sort((a, b) => (b.basique as number) - (a.basique as number));
   }, [shooters]);
 
   function toggleShooter(id: string) {
@@ -320,11 +322,11 @@ export default function ComparatifPage() {
             >
               <span style={{ textAlign: "center" }}>Rang</span>
               <span>Tireur</span>
-              <span style={{ textAlign: "right" }}>Score moyen</span>
+              <span style={{ textAlign: "right" }}>Préc. Basique</span>
               <span style={{ textAlign: "center" }}>Tendance</span>
               <span style={{ textAlign: "right" }}>Sessions</span>
             </div>
-            {ranking.map((s, i) => {
+            {ranking.map(({ shooter: s, basique }, i) => {
               const rank = i + 1;
               const top3 = rank <= 3;
               return (
@@ -368,7 +370,7 @@ export default function ComparatifPage() {
                   </span>
                   <span className={styles.nm}>{s.name}</span>
                   <span className={styles.score}>
-                    {(s.avgScore as number).toFixed(1)}
+                    {(basique as number).toFixed(1)}%
                   </span>
                   <span style={{ justifySelf: "center" }}>
                     <TrendArrow trend={s.trend} />

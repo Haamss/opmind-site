@@ -7,8 +7,8 @@ import {
   fetchUnifiedSessions,
   resolveShooterNames,
 } from "../../../components/dashboard/data";
-import { moduleLabel } from "../../../components/dashboard/modules";
 import { fmtDot, accuracyPct } from "../../../components/dashboard/format";
+import { basiquePrecision } from "../../../components/dashboard/scoring";
 import { EmptyState } from "../../../components/dashboard/ui";
 import styles from "../../../components/dashboard/dashboard.module.css";
 import type {
@@ -56,12 +56,11 @@ type ProfileLite = {
 type DerivedShooter = {
   row: Shooter;
   sessions: UnifiedSession[];
-  level: "A" | "B" | "C" | "D";
-  lastScore: number;
+  level: "A" | "B" | "C" | "D" | null;
+  refScore: number | null;
   scoreDelta: number;
   accuracy: number;
   accDelta: number;
-  lastModule: string | null;
   lastHitFactor: number | null;
   sessionsCount: number;
   sessionsDelta: number;
@@ -88,26 +87,37 @@ function deriveShooter(
       new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
   );
 
-  // Headline = DERNIÈRE séance (un seul module). Score = normalized_score réel,
-  // HF = hit_factor réel (jamais normalized/10). Jamais de moyenne inter-modules.
+  // Dernière séance (un seul module) : accuracy + HF réels, pour l'affichage.
   const last = ordered[ordered.length - 1] ?? null;
   const lastModule = last?.module ?? null;
-  const lastScore =
-    last && typeof last.normalized_score === "number" ? last.normalized_score : 0;
   const lastAcc =
     last && typeof last.accuracy === "number" ? accuracyPct(last.accuracy) ?? 0 : 0;
   const lastHitFactor =
     last && typeof last.hit_factor === "number" ? last.hit_factor : null;
 
-  // Deltas = dernière vs précédente séance DU MÊME MODULE (segmenté, pas d'agrégat).
+  // Référence inter-tireurs = précision Basique récente lissée (0-100). null si
+  // aucune séance basique → level neutre, hors classScore/leaderboard.
+  const refScore = basiquePrecision(sessions);
+
+  // Delta de référence = récent vs précédent, sur la précision Basique brute.
+  const basiqueAcc = ordered
+    .filter((s) => s.module === "basique")
+    .map((s) => accuracyPct(s.accuracy))
+    .filter((v): v is number => v !== null);
+  const scoreDelta =
+    basiqueAcc.length >= 2
+      ? Math.round(
+          basiqueAcc[basiqueAcc.length - 1] - basiqueAcc[basiqueAcc.length - 2]
+        )
+      : 0;
+
+  // Accuracy delta = dernière vs précédente séance DU MÊME MODULE (inchangé).
   const sameModule = ordered.filter((s) => (s.module ?? null) === lastModule);
   const prev = sameModule.length >= 2 ? sameModule[sameModule.length - 2] : null;
-  const prevScore =
-    prev && typeof prev.normalized_score === "number" ? prev.normalized_score : 0;
   const prevAcc =
     prev && typeof prev.accuracy === "number" ? accuracyPct(prev.accuracy) ?? 0 : 0;
-  const scoreDelta = prevScore > 0 ? Math.round(lastScore - prevScore) : 0;
   const accDelta = prevAcc > 0 ? Math.round(lastAcc - prevAcc) : 0;
+
   // Volume récent = comptage 30j (un nombre, pas une moyenne).
   const cutoff = Date.now() - 30 * 86400000;
   const sessionsDelta = sessions.filter(
@@ -119,7 +129,7 @@ function deriveShooter(
     .filter((d) => !isNaN(d.getTime()))
     .sort((a, b) => b.getTime() - a.getTime())[0];
 
-  // Flag based on simple heuristics
+  // Flags sur la progression de référence (précision Basique).
   let flag: DerivedShooter["flag"] | undefined;
   const daysSinceLast = lastActivity
     ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000)
@@ -131,12 +141,11 @@ function deriveShooter(
   return {
     row,
     sessions,
-    level: deriveLevelFromScore(lastScore),
-    lastScore,
+    level: refScore === null ? null : deriveLevelFromScore(refScore),
+    refScore,
     scoreDelta,
     accuracy: Math.round(lastAcc),
     accDelta,
-    lastModule,
     lastHitFactor,
     sessionsCount: sessions.length,
     sessionsDelta,
@@ -248,7 +257,7 @@ export default function MesTireursPage() {
       C: 0,
       D: 0,
     };
-    for (const s of shooters) c[s.level]++;
+    for (const s of shooters) if (s.level) c[s.level]++;
     return c;
   }, [shooters]);
 
@@ -296,12 +305,12 @@ export default function MesTireursPage() {
       0
     );
   }, [shooters]);
-  // Vraie moyenne sur l'échelle 0–100 (dernière séance de chaque tireur).
-  // L'arrondi d'affichage est géré par toFixed(1).
+  // Référence classe = moyenne des précisions Basique (actifs, non-null).
+  const activeRef = activeShooters.filter((s) => s.refScore !== null);
   const classScore =
-    activeShooters.length > 0
-      ? activeShooters.reduce((sum, s) => sum + s.lastScore, 0) /
-        activeShooters.length
+    activeRef.length > 0
+      ? activeRef.reduce((sum, s) => sum + (s.refScore as number), 0) /
+        activeRef.length
       : 0;
   const classAcc =
     activeShooters.length > 0
@@ -314,7 +323,11 @@ export default function MesTireursPage() {
 
   /* ────  Leaderboard  ──── */
   const leaderboard = useMemo(
-    () => [...shooters].sort((a, b) => b.lastScore - a.lastScore).slice(0, 5),
+    () =>
+      [...shooters]
+        .filter((s) => s.refScore !== null)
+        .sort((a, b) => (b.refScore as number) - (a.refScore as number))
+        .slice(0, 5),
     [shooters]
   );
 
@@ -349,7 +362,7 @@ export default function MesTireursPage() {
         label,
         value:
           s.flag === "stagne"
-            ? `Score ${Math.round(s.lastScore)}`
+            ? `Préc. ${s.refScore !== null ? Math.round(s.refScore) : "—"}`
             : `${daysSince} j`,
         color,
         at: s.lastActivity,
@@ -364,6 +377,7 @@ export default function MesTireursPage() {
   const groups = useMemo(() => {
     const map = new Map<string, number>();
     for (const s of shooters) {
+      if (!s.level) continue;
       const k = LEVEL_LABELS[s.level];
       map.set(k, (map.get(k) || 0) + 1);
     }
@@ -457,7 +471,7 @@ export default function MesTireursPage() {
               >
                 <span>Tireur</span>
                 <span>Niveau</span>
-                <span>Score</span>
+                <span>Préc. Basique</span>
                 <span>Précision</span>
                 <span>Dernière</span>
               </div>
@@ -614,9 +628,9 @@ function StatsStrip({
       sub: "Σ roster lié · statut actif",
     },
     {
-      label: "Score moyen classe",
+      label: "Précision moy. (Basique)",
       value: classScore > 0 ? classScore.toFixed(1) : "—",
-      sub: "Dernière séance · modules confondus",
+      sub: "Basique récent lissé · tireurs actifs",
     },
     {
       label: "Accuracy moy.",
@@ -994,11 +1008,11 @@ function CardHeader({ s }: { s: DerivedShooter }) {
           <span
             className={styles.badge}
             style={{
-              color: LEVEL_PALETTE[s.level],
-              borderColor: LEVEL_PALETTE[s.level],
+              color: s.level ? LEVEL_PALETTE[s.level] : "var(--dim-2)",
+              borderColor: s.level ? LEVEL_PALETTE[s.level] : "var(--line-2)",
             }}
           >
-            {LEVEL_LABELS[s.level]}
+            {s.level ? LEVEL_LABELS[s.level] : "—"}
           </span>
         </div>
         <div
@@ -1037,11 +1051,11 @@ function CardStats({ s }: { s: DerivedShooter }) {
       unit: "",
     },
     {
-      label: "Dernière (score)",
-      value: s.lastScore > 0 ? s.lastScore.toFixed(1) : "—",
+      label: "Précision Basique",
+      value: s.refScore !== null ? s.refScore.toFixed(1) : "—",
       delta: s.scoreDelta,
       unit: "pts",
-      note: s.lastModule ? moduleLabel(s.lastModule) : undefined,
+      note: "Basique · réf. lissée",
     },
     {
       label: "Accuracy (dernière)",
@@ -1298,15 +1312,15 @@ function ShooterListRow({ s, onOpen }: { s: DerivedShooter; onOpen: () => void }
       <span
         className={styles.badge}
         style={{
-          color: LEVEL_PALETTE[s.level],
-          borderColor: LEVEL_PALETTE[s.level],
+          color: s.level ? LEVEL_PALETTE[s.level] : "var(--dim-2)",
+          borderColor: s.level ? LEVEL_PALETTE[s.level] : "var(--line-2)",
           justifySelf: "start",
         }}
       >
-        {LEVEL_LABELS[s.level]}
+        {s.level ? LEVEL_LABELS[s.level] : "—"}
       </span>
       <span className={styles.score}>
-        {s.lastScore > 0 ? s.lastScore.toFixed(1) : "—"}
+        {s.refScore !== null ? s.refScore.toFixed(1) : "—"}
       </span>
       <span className={styles.num}>
         {s.accuracy > 0 ? `${s.accuracy}%` : "—"}
@@ -1336,7 +1350,7 @@ function LeaderboardPanel({
 }) {
   return (
     <section className={styles.panel}>
-      <PanelTitle title="Leaderboard · Score (dernière séance)" />
+      <PanelTitle title="Leaderboard · Précision Basique" />
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {entries.length === 0 ? (
           <span
@@ -1407,7 +1421,7 @@ function LeaderboardPanel({
                 >
                   {e.row.name} ·{" "}
                   <span style={{ color: "var(--dim-2)", fontSize: 10 }}>
-                    {LEVEL_LABELS[e.level].split(" ")[0]}
+                    {e.level ? LEVEL_LABELS[e.level].split(" ")[0] : "—"}
                   </span>
                 </span>
                 <span
@@ -1418,7 +1432,7 @@ function LeaderboardPanel({
                     color: "var(--red)",
                   }}
                 >
-                  {e.lastScore > 0 ? e.lastScore.toFixed(1) : "—"}
+                  {e.refScore !== null ? e.refScore.toFixed(1) : "—"}
                 </span>
               </div>
             );

@@ -120,6 +120,7 @@ export interface ScoredSession {
   total_shots?: number | null;
   hit_factor?: number | null;
   avg_split?: number | null;
+  date?: string;
 }
 
 /** Valeur de la métrique NATIVE de la session selon l'axe de son module.
@@ -166,6 +167,22 @@ export function bestByModule<T extends ScoredSession>(
     }
   }
   return best;
+}
+
+/* ─────────────────────── Référence inter-tireurs ─────────────────────── */
+
+/** Précision Basique récente (lissée, fenêtre 3) = métrique de référence pour
+ *  classer/comparer les tireurs entre eux. null si aucune séance basique. */
+export function basiquePrecision(sessions: ScoredSession[]): number | null {
+  const acc = sessions
+    .filter((s) => s.module === "basique")
+    .slice()
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")) // chrono ASC
+    .map((s) => accuracyPct(s.accuracy))
+    .filter((v): v is number => v !== null);
+  if (acc.length === 0) return null;
+  const ma = movingAverage(acc, 3);
+  return ma[ma.length - 1]; // dernière valeur lissée = niveau récent
 }
 
 /* ──────────────────────────────── Palette ────────────────────────────── */

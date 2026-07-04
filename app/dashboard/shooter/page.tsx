@@ -24,13 +24,13 @@ import {
   fmtSlash,
   modChartColor,
   moduleBadgeClass,
-  moduleShort,
   accuracyPct,
 } from "@/components/dashboard/format";
 import {
   bestByModule,
   moduleAxis,
   moduleMetric,
+  movingAverage,
 } from "@/components/dashboard/scoring";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
@@ -240,8 +240,13 @@ function ShooterDetail() {
   }, [sessions, now]);
 
   const chart = useMemo(() => {
+    // Courbe = progression sur normalized_score (0-100, comparable inter-modules),
+    // restreinte aux modules SCORÉS. dry_fire / volume disparaissent de la courbe.
     const scored = sessions
-      .filter((s) => typeof s.normalized_score === "number")
+      .filter(
+        (s) =>
+          typeof s.normalized_score === "number" && moduleAxis(s.module).scored
+      )
       .slice()
       .sort((a, b) => +new Date(a.date) - +new Date(b.date));
     const n = scored.length;
@@ -272,66 +277,49 @@ function ShooterDetail() {
       polyline: arr.map((p) => `${p.x},${p.y}`).join(" "),
     }));
 
-    // PR = meilleur score.
-    let prIndex = -1;
-    pts.forEach((p, i) => {
-      if (prIndex === -1 || p.score > pts[prIndex].score) prIndex = i;
+    // Record PAR module = meilleur point de chaque série (jamais un PR inter-modules).
+    const recordPts = new Set<ChartPt>();
+    byModule.forEach((arr) => {
+      let best: ChartPt | null = null;
+      for (const p of arr) if (!best || p.score > best.score) best = p;
+      if (best) recordPts.add(best);
     });
-    const pr = prIndex >= 0 ? pts[prIndex] : null;
 
-    // Aire = remplissage sous la ligne du module dominant (celui du PR).
+    // Module dominant = celui qui a le plus de séances scorées (volume, pas PR).
+    let dominant: string | null = null;
+    let dominantCount = 0;
+    byModule.forEach((arr, m) => {
+      if (arr.length > dominantCount) {
+        dominantCount = arr.length;
+        dominant = m;
+      }
+    });
+
+    // Aire = remplissage sous la ligne du module dominant en volume.
     let area = "";
     let areaColor: string | null = null;
-    if (pr) {
-      const arr = byModule.get(pr.module ?? "autre") ?? [];
+    if (dominant) {
+      const arr = byModule.get(dominant) ?? [];
       if (arr.length >= 2) {
         area =
           `M ${arr[0].x},${arr[0].y} ` +
           arr.slice(1).map((p) => `L ${p.x},${p.y} `).join("") +
           `L ${arr[arr.length - 1].x},${YB} L ${arr[0].x},${YB} Z`;
-        areaColor = modChartColor(pr.module);
+        areaColor = modChartColor(dominant);
       }
     }
 
-    // Tendance (régression linéaire index → score).
-    let trend: { x1: number; y1: number; x2: number; y2: number } | null = null;
+    // Lissage = moyenne mobile (fenêtre 3) sur la série chronologique globale.
+    // Remplace la droite de régression.
+    let smooth = "";
     let delta: number | null = null;
     if (n >= 2) {
-      const mx = (n - 1) / 2;
-      const my = pts.reduce((s, p) => s + p.score, 0) / n;
-      let num = 0, den = 0;
-      pts.forEach((p, i) => {
-        num += (i - mx) * (p.score - my);
-        den += (i - mx) ** 2;
-      });
-      const slope = den ? num / den : 0;
-      const intercept = my - slope * mx;
-      trend = {
-        x1: xAt(0),
-        y1: +yAt(intercept).toFixed(1),
-        x2: xAt(n - 1),
-        y2: +yAt(intercept + slope * (n - 1)).toFixed(1),
-      };
+      const ma = movingAverage(
+        pts.map((p) => p.score),
+        3
+      );
+      smooth = pts.map((p, i) => `${p.x},${+yAt(ma[i]).toFixed(1)}`).join(" ");
       delta = Math.round(pts[n - 1].score - pts[0].score);
-    }
-
-    // Callout PR : à droite du point sauf si trop près du bord → à gauche.
-    let callout:
-      | { boxX: number; boxY: number; boxW: number; boxH: number }
-      | null = null;
-    if (pr) {
-      const boxW = 96, boxH = 38, gap = 14;
-      const toRight = pr.x + gap + boxW <= X1;
-      const boxX = toRight ? pr.x + gap : pr.x - gap - boxW;
-      let boxY = pr.y - boxH / 2;
-      if (boxY < 8) boxY = 8;
-      if (boxY > 340 - boxH - 8) boxY = 340 - boxH - 8;
-      callout = {
-        boxX: +boxX.toFixed(1),
-        boxY: +boxY.toFixed(1),
-        boxW,
-        boxH,
-      };
     }
 
     const labelStep = n > 7 ? Math.ceil(n / 6) : 1;
@@ -341,18 +329,16 @@ function ShooterDetail() {
     return {
       pts,
       series,
-      pr,
-      prIndex,
+      recordPts,
       area,
       areaColor,
-      trend,
+      smooth,
       delta,
       n,
       labelStep,
       modulesPresent,
       firstDate: pts[0]?.date ?? null,
       lastDate: pts[n - 1]?.date ?? null,
-      callout,
     };
   }, [sessions]);
 
@@ -710,12 +696,10 @@ function ShooterDetail() {
                 {chart.area && (
                   <path d={chart.area} fill="url(#ficheAreaGrad)" stroke="none" />
                 )}
-                {chart.trend && (
-                  <line
-                    x1={chart.trend.x1}
-                    y1={chart.trend.y1}
-                    x2={chart.trend.x2}
-                    y2={chart.trend.y2}
+                {chart.smooth && (
+                  <polyline
+                    points={chart.smooth}
+                    fill="none"
                     stroke="rgba(232,74,58,0.55)"
                     strokeWidth="1.5"
                     strokeDasharray="6 4"
@@ -731,70 +715,19 @@ function ShooterDetail() {
                   />
                 ))}
                 {chart.pts.map((p, i) => {
-                  const isPr = i === chart.prIndex;
+                  const isRecord = chart.recordPts.has(p);
                   return (
                     <circle
                       key={i}
                       cx={p.x}
                       cy={p.y}
-                      r={isPr ? 7 : 5}
-                      fill={isPr ? "#5ad99b" : p.color}
+                      r={isRecord ? 6.5 : 5}
+                      fill={p.color}
+                      stroke={isRecord ? "#5ad99b" : "none"}
+                      strokeWidth={isRecord ? 2 : 0}
                     />
                   );
                 })}
-                {chart.callout && chart.pr && (
-                  <g>
-                    <rect
-                      x={chart.callout.boxX}
-                      y={chart.callout.boxY}
-                      width={chart.callout.boxW}
-                      height={chart.callout.boxH}
-                      fill="var(--bg)"
-                      stroke={chart.pr.color}
-                      strokeWidth="1"
-                    />
-                    <text
-                      x={chart.callout.boxX + 12}
-                      y={chart.callout.boxY + 17}
-                      style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 9,
-                        fill: "rgba(235,229,210,0.55)",
-                        letterSpacing: "0.12em",
-                      }}
-                    >
-                      {moduleShort(chart.pr.module)} · PR
-                    </text>
-                    <text
-                      x={chart.callout.boxX + 12}
-                      y={chart.callout.boxY + 32}
-                      style={{
-                        fontFamily: "var(--display)",
-                        fontWeight: 500,
-                        fontSize: 17,
-                        fill: "var(--ink)",
-                      }}
-                    >
-                      {chart.pr.score.toFixed(1)}
-                    </text>
-                    {chart.delta !== null && (
-                      <text
-                        x={chart.callout.boxX + 56}
-                        y={chart.callout.boxY + 32}
-                        style={{
-                          fontFamily: "var(--mono)",
-                          fontSize: 9,
-                          fill: "#5ad99b",
-                          letterSpacing: "0.1em",
-                        }}
-                      >
-                        {chart.delta >= 0
-                          ? `↗+${chart.delta}`
-                          : `↘${chart.delta}`}
-                      </text>
-                    )}
-                  </g>
-                )}
                 <g
                   style={{
                     fontFamily: "var(--mono)",
@@ -841,7 +774,7 @@ function ShooterDetail() {
                     className={styles.ln}
                     style={{ background: "var(--red)" }}
                   />{" "}
-                  Tendance
+                  Moyenne mobile
                 </div>
                 {chart.delta !== null && (
                   <span className={styles.delta}>

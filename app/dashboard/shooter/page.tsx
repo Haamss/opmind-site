@@ -27,6 +27,11 @@ import {
   moduleShort,
   accuracyPct,
 } from "@/components/dashboard/format";
+import {
+  bestByModule,
+  moduleAxis,
+  moduleMetric,
+} from "@/components/dashboard/scoring";
 import { downloadSessionPdf } from "@/lib/sessionPdf";
 import {
   AssignmentStatusBadge,
@@ -35,7 +40,6 @@ import {
 } from "@/components/dashboard/ui";
 import type {
   Assignment,
-  ManualSession,
   Shooter,
   UnifiedSession,
 } from "@/components/dashboard/types";
@@ -48,6 +52,23 @@ type ChartPt = {
   color: string;
   date: string;
 };
+
+/** Formate la métrique native d'un module pour les mini-KPI d'en-tête. */
+function fmtModuleKpi(value: number | null, unit: string): string {
+  if (value === null) return "—";
+  switch (unit) {
+    case "%":
+      return `${value.toFixed(0)}%`;
+    case "s":
+      return `${value.toFixed(2)}s`;
+    case "HF":
+      return `${value.toFixed(2)} HF`;
+    case "reps":
+      return `${Math.round(value)} reps`;
+    default:
+      return `${value}`;
+  }
+}
 
 export default function ShooterPage() {
   return (
@@ -162,20 +183,31 @@ function ShooterDetail() {
   }, [load]);
 
   const stats = useMemo(() => {
-    // Meilleure séance = max normalized_score (pas une moyenne) + son module.
-    let bestSession: ManualSession | null = null;
+    // Record PAR module (dry_fire exclu par construction : scored:false).
+    const records = bestByModule(sessions);
+
+    // Mini-KPI par module : métrique NATIVE de la dernière séance de chaque
+    // module présent, ordonnés par volume de séances décroissant. sessions est
+    // triée date desc → la 1re occurrence d'un module = sa dernière séance.
+    const moduleCount = new Map<string, number>();
+    const moduleLastSession = new Map<string, UnifiedSession>();
     for (const s of sessions) {
-      if (
-        typeof s.normalized_score === "number" &&
-        (bestSession === null ||
-          s.normalized_score > (bestSession.normalized_score as number))
-      ) {
-        bestSession = s;
-      }
+      const m = s.module;
+      if (!m) continue;
+      if (!moduleLastSession.has(m)) moduleLastSession.set(m, s);
+      moduleCount.set(m, (moduleCount.get(m) ?? 0) + 1);
     }
-    const bestScore = bestSession ? bestSession.normalized_score : null;
-    const bestModule = bestSession?.module ?? null;
-    const bestDate = bestSession?.date ?? null;
+    const moduleKPIs = Array.from(moduleCount.keys())
+      .sort((a, b) => (moduleCount.get(b) ?? 0) - (moduleCount.get(a) ?? 0))
+      .map((m) => {
+        const axis = moduleAxis(m);
+        return {
+          module: m,
+          label: axis.label,
+          unit: axis.unit,
+          value: moduleMetric(moduleLastSession.get(m)!),
+        };
+      });
 
     // Headline = DERNIÈRE séance (un seul module). Jamais de moyenne inter-modules.
     // sessions triées par date desc (fetchUnifiedSessions) → [0] = dernière.
@@ -200,9 +232,8 @@ function ShooterDetail() {
       lastAccuracy,
       lastModule,
       lastDate,
-      bestScore,
-      bestModule,
-      bestDate,
+      records,
+      moduleKPIs,
       count: sessions.length,
       sessions30d,
     };
@@ -509,30 +540,68 @@ function ShooterDetail() {
               </span>
             </div>
 
-            {/* Meilleur score */}
+            {/* Par module — métrique native de la dernière séance */}
             <div className={styles.kpi}>
               <div className={styles["kpi-head"]}>
-                <span className={styles["kpi-l"]}>Meilleur score</span>
-                {stats.bestModule && (
-                  <span
-                    className={`${styles["kpi-badge"]} ${
-                      styles[moduleBadgeClass(stats.bestModule)]
-                    }`}
-                  >
-                    {moduleLabel(stats.bestModule)}
-                  </span>
-                )}
+                <span className={styles["kpi-l"]}>Par module</span>
               </div>
-              <span
-                className={`${styles["kpi-v"]} ${
-                  stats.bestScore !== null ? styles.hl : styles.empty
-                }`}
-              >
-                {stats.bestScore !== null ? stats.bestScore.toFixed(1) : "—"}
-              </span>
-              <span className={styles["kpi-sub"]}>
-                {stats.bestDate ? `PR · ${fmtDot(stats.bestDate, true)}` : "—"}
-              </span>
+              {stats.moduleKPIs.length === 0 ? (
+                <span className={`${styles["kpi-v"]} ${styles.empty}`}>—</span>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  {stats.moduleKPIs.map((k) => (
+                    <div
+                      key={k.module}
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <span
+                        className={`${styles["kpi-badge"]} ${
+                          styles[moduleBadgeClass(k.module)]
+                        }`}
+                      >
+                        {moduleLabel(k.module)}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "var(--display)",
+                          fontWeight: 500,
+                          fontSize: 20,
+                          letterSpacing: "-0.02em",
+                          whiteSpace: "nowrap",
+                          color:
+                            k.value === null ? "var(--dim-2)" : "var(--ink)",
+                        }}
+                      >
+                        {fmtModuleKpi(k.value, k.unit)}
+                        <span
+                          style={{
+                            fontFamily: "var(--mono)",
+                            fontSize: 9,
+                            color: "var(--dim)",
+                            letterSpacing: "0.14em",
+                            textTransform: "uppercase",
+                            marginLeft: 6,
+                          }}
+                        >
+                          {k.label}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span className={styles["kpi-sub"]}>Dernière séance · natif</span>
             </div>
 
             {/* Précision (dernière) */}
@@ -820,9 +889,9 @@ function ShooterDetail() {
                 {sessions.map((s) => {
                   const linkable =
                     s.source === "module" && !!s.module_session_id;
-                  const isPr =
-                    stats.bestScore !== null &&
-                    s.normalized_score === stats.bestScore;
+                  // Record du module de la séance (par module, plus de max inter-modules).
+                  const rec = s.module ? stats.records[s.module] : undefined;
+                  const isPr = !!rec && rec.id === s.id;
                   return (
                     <div
                       key={s.id}

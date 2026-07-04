@@ -17,6 +17,7 @@ export interface ModuleSessionRow {
   accuracy: number | null;
   total_shots: number | null;
   hit_factor: number | null;
+  avg_split: number | null;
 }
 
 /**
@@ -98,7 +99,7 @@ export async function fetchModuleSessions(
   const { data, error } = await getSupabase()
     .from("module_sessions")
     .select(
-      "id,user_id,source_module,date,normalized_score,accuracy,total_shots,hit_factor"
+      "id,user_id,source_module,date,normalized_score,accuracy,total_shots,hit_factor,avg_split"
     )
     .in("user_id", shooterUserIds)
     .order("date", { ascending: false });
@@ -112,7 +113,7 @@ export async function fetchModuleSessionById(
   const { data, error } = await getSupabase()
     .from("module_sessions")
     .select(
-      "id,user_id,source_module,date,normalized_score,accuracy,total_shots,hit_factor"
+      "id,user_id,source_module,date,normalized_score,accuracy,total_shots,hit_factor,avg_split"
     )
     .eq("id", id)
     .maybeSingle();
@@ -175,6 +176,7 @@ export async function fetchUnifiedSessions(
     ...m,
     source: "manual",
     hit_factor: null,
+    avg_split: null,
     module_session_id: null,
   }));
 
@@ -192,6 +194,7 @@ export async function fetchUnifiedSessions(
       created_at: r.date,
       source: "module",
       hit_factor: r.hit_factor,
+      avg_split: r.avg_split,
       module_session_id: r.id,
     }));
 

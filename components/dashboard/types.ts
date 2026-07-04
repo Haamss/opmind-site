@@ -47,6 +47,7 @@ export type SessionSource = "manual" | "module";
 export interface UnifiedSession extends ManualSession {
   source: SessionSource;
   hit_factor: number | null;
+  avg_split: number | null;
   module_session_id: string | null;
 }
 

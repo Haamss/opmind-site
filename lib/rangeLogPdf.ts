@@ -124,7 +124,9 @@ export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   setColor(BLACK);
-  const period = `${fmtParis(data.periodFrom)} → ${fmtParis(data.periodTo)}`;
+  // « → » (U+2192) n'existe pas en WinAnsi : les polices standard jsPDF le
+  // rendent en « !' ». On écrit « au », lisible et sans risque d'encodage.
+  const period = `${fmtParis(data.periodFrom)} au ${fmtParis(data.periodTo)}`;
   doc.text(`Période couverte : ${period}`, MARGIN_X, y);
   doc.text(`Généré le : ${genDate}`, PAGE_W - MARGIN_X, y, { align: "right" });
   y += 4;

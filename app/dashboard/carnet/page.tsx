@@ -234,6 +234,20 @@ function CarnetDetail() {
               </svg>
               Saisir une séance
             </button>
+            {entries.some((e) => e.regime === "pia207") && (
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    `/api/carnet/pdf?instructor_shooter_id=${id}&regime=pia207`,
+                    "_blank"
+                  )
+                }
+                className={styles["btn-ghost"]}
+              >
+                Exporter PDF (PIA-207)
+              </button>
+            )}
           </div>
 
           {actionError && (

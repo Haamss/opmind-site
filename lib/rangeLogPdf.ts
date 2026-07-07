@@ -82,7 +82,7 @@ const COLS: { key: string; label: string; w: number; align: "l" | "r" }[] = [
   { key: "valle", label: "Val. le", w: 16, align: "r" },
 ];
 
-export function buildRangeLogPdf(data: RangeLogPdfData): Uint8Array {
+export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = MARGIN_X;
 
@@ -361,5 +361,5 @@ export function buildRangeLogPdf(data: RangeLogPdfData): Uint8Array {
     });
   }
 
-  return new Uint8Array(doc.output("arraybuffer"));
+  return doc.output("arraybuffer");
 }

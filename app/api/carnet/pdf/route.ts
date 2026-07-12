@@ -7,8 +7,9 @@ import type { Regime } from "@/components/dashboard/rangeLog";
 // jspdf + node:crypto → runtime Node (pas Edge).
 export const runtime = "nodejs";
 
-// Seul le template PIA-207 existe. Aucun fallback silencieux (fdo/club → 400).
-const ALLOWED_REGIMES = ["pia207"] as const;
+// Les 3 régimes sont supportés — le template adapte mention légale, identité
+// et seuil de référence par régime (voir lib/rangeLogPdf.ts REGIME_PDF).
+const ALLOWED_REGIMES = ["pia207", "fdo", "club"] as const;
 
 /** Réponse d'erreur lisible : le bouton fait un window.open, l'utilisateur voit
  *  le texte brut dans l'onglet → text/plain FR, jamais de JSON. */
@@ -29,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!(ALLOWED_REGIMES as readonly string[]).includes(regime)) {
     return fail(
       400,
-      "Régime non supporté pour l'export PDF — seul le régime PIA-207 est disponible."
+      "Régime non supporté pour l'export PDF — régimes disponibles : PIA-207, FDO, club."
     );
   }
 
@@ -121,7 +122,7 @@ export async function GET(request: Request): Promise<Response> {
     entries,
   });
 
-  const filename = `releve-pia207-${shooterRow.id}.pdf`;
+  const filename = `releve-${regime}-${shooterRow.id}.pdf`;
   return new Response(new Blob([bytes], { type: "application/pdf" }), {
     status: 200,
     headers: {

@@ -41,6 +41,14 @@ const VERDICT_LABELS: Record<ComplianceVerdict, string> = {
   na: "N/A",
 };
 
+/** Libellés FR des seuils applicables — SOURCE UNIQUE, réutilisés par
+ *  evaluateCompliance et par l'export PDF (qui affiche le seuil sans verdict). */
+export const REQUIREMENT_LABELS: Record<Regime, string> = {
+  fdo: "≥ 3 séances et ≥ 12 h / 12 mois",
+  club: "≥ 3 tirs contrôlés / 12 mois",
+  pia207: "Compteurs indicatifs (pas de seuil V1)",
+};
+
 export function evaluateCompliance(input: ComplianceInput): ComplianceResult {
   switch (input.regime) {
     case "fdo": {
@@ -50,7 +58,7 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceResult {
       return {
         verdict: ok ? "conforme" : "non_conforme",
         label: VERDICT_LABELS[ok ? "conforme" : "non_conforme"],
-        requirement: "≥ 3 séances et ≥ 12 h / 12 mois",
+        requirement: REQUIREMENT_LABELS.fdo,
       };
     }
     case "club": {
@@ -58,7 +66,7 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceResult {
       return {
         verdict: ok ? "conforme" : "non_conforme",
         label: VERDICT_LABELS[ok ? "conforme" : "non_conforme"],
-        requirement: "≥ 3 tirs contrôlés / 12 mois",
+        requirement: REQUIREMENT_LABELS.club,
       };
     }
     case "pia207":
@@ -66,7 +74,7 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceResult {
       return {
         verdict: "na",
         label: VERDICT_LABELS.na,
-        requirement: "Compteurs indicatifs (pas de seuil V1)",
+        requirement: REQUIREMENT_LABELS.pia207,
       };
   }
 }

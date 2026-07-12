@@ -1,6 +1,10 @@
-// Template PDF « Relevé individuel de tir — PIA-207 ». Présentation PURE : reçoit
-// une identité + des entrées déjà filtrées (validated, régime, période) et rend
-// un A4 français lisible en N&B via jspdf (tourne en Node). Aucun accès Supabase.
+// Template PDF « Relevé individuel de tir » — les 3 régimes (pia207 / fdo / club).
+// Présentation PURE : reçoit une identité + des entrées déjà filtrées (validated,
+// régime, période) et rend un A4 français lisible en N&B via jspdf (tourne en
+// Node). Aucun accès Supabase. Les spécificités par régime (mention légale,
+// libellés identité, seuil affiché) vivent dans REGIME_PDF ci-dessous.
+// Règle conservée : le PDF n'affiche JAMAIS de verdict de conformité — seulement
+// les compteurs et le seuil de référence.
 //
 // Toutes les dates sont formatées JJ/MM/AAAA en Europe/Paris FORCÉ : le serveur
 // tourne en UTC et `date` est un timestamptz — sans ça une séance de 23h le 06/07
@@ -13,6 +17,41 @@ import {
   fmtDuration,
   type Regime,
 } from "@/components/dashboard/rangeLog";
+import { REQUIREMENT_LABELS } from "@/lib/complianceThresholds";
+
+/* Spécificités documentaires par régime. identityRows : libellé affiché pour
+ * chaque champ d'identité (null = champ masqué pour ce régime). */
+const REGIME_PDF: Record<
+  Regime,
+  {
+    disclaimer: string;
+    gradeLabel: string | null;
+    unitLabel: string | null;
+    showRequirement: boolean;
+  }
+> = {
+  pia207: {
+    disclaimer:
+      "Relevé d'appui signable — ne se substitue pas au carnet ISTC officiel.",
+    gradeLabel: "Grade",
+    unitLabel: "Unité",
+    showRequirement: false,
+  },
+  fdo: {
+    disclaimer:
+      "Relevé d'appui signable — ne se substitue pas aux registres officiels de l'administration d'emploi.",
+    gradeLabel: "Grade",
+    unitLabel: "Unité",
+    showRequirement: true,
+  },
+  club: {
+    disclaimer:
+      "Relevé d'appui signable — ne se substitue pas au carnet de tir officiel ni aux registres du club.",
+    gradeLabel: null,
+    unitLabel: "Club",
+    showRequirement: true,
+  },
+};
 
 const BORDEAUX: [number, number, number] = [122, 0, 0];
 const BLACK: [number, number, number] = [0, 0, 0];
@@ -99,6 +138,7 @@ export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
   };
 
   const genDate = fmtParis(data.generatedAt);
+  const regimeCfg = REGIME_PDF[data.regime];
 
   /* ───────────── En-tête ───────────── */
   setColor(BORDEAUX);
@@ -114,11 +154,7 @@ export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
   setColor(GREY);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.text(
-    "Relevé d'appui signable — ne se substitue pas au carnet ISTC officiel.",
-    MARGIN_X,
-    y
-  );
+  doc.text(regimeCfg.disclaimer, MARGIN_X, y);
   y += 5;
 
   doc.setFont("helvetica", "normal");
@@ -145,11 +181,13 @@ export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
   doc.setFontSize(9);
   doc.text("IDENTITÉ DU TIREUR", MARGIN_X, y);
   y += 5;
-  const idRows: [string, string][] = [
-    ["Nom", data.identity.name || "—"],
-    ["Grade", data.identity.grade || "—"],
-    ["Unité", data.identity.unit || "—"],
-  ];
+  const idRows: [string, string][] = [["Nom", data.identity.name || "—"]];
+  if (regimeCfg.gradeLabel) {
+    idRows.push([regimeCfg.gradeLabel, data.identity.grade || "—"]);
+  }
+  if (regimeCfg.unitLabel) {
+    idRows.push([regimeCfg.unitLabel, data.identity.unit || "—"]);
+  }
   doc.setFontSize(9);
   idRows.forEach(([k, v]) => {
     setColor(GREY);
@@ -237,6 +275,20 @@ export function buildRangeLogPdf(data: RangeLogPdfData): ArrayBuffer {
     y
   );
   y += 6;
+
+  /* Seuil de référence (fdo/club) — informatif, JAMAIS de verdict dans le PDF. */
+  if (regimeCfg.showRequirement) {
+    ensure(5);
+    setColor(GREY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text(
+      `Seuil réglementaire de référence : ${REQUIREMENT_LABELS[data.regime]} — appréciation réservée à l'autorité compétente.`,
+      MARGIN_X,
+      y
+    );
+    y += 6;
+  }
 
   /* ───────────── Tableau détaillé ───────────── */
   const drawTableHeader = () => {

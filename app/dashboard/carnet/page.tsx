@@ -50,6 +50,13 @@ const VERDICT_COLOR: Record<ComplianceVerdict, string> = {
 // Date · Régime · Type · Munitions · Durée · Arme · Statut
 const CARNET_COLS = "96px 130px minmax(0,1fr) 90px 80px minmax(0,1fr) 110px";
 
+// Libellés courts pour les boutons d'export (les REGIME_LABELS longs alourdissent).
+const REGIME_SHORT: Record<Regime, string> = {
+  pia207: "PIA-207",
+  fdo: "FDO",
+  club: "Club",
+};
+
 /** Minutes → « Xh » si pile, sinon « XhYY » (ex: 30 → « 0h30 », 90 → « 1h30 »).
  *  Exact, jamais arrondi à l'heure. */
 function fmtHours(min: number): string {
@@ -234,20 +241,27 @@ function CarnetDetail() {
               </svg>
               Saisir une séance
             </button>
-            {entries.some((e) => e.regime === "pia207") && (
-              <button
-                type="button"
-                onClick={() =>
-                  window.open(
-                    `/api/carnet/pdf?instructor_shooter_id=${id}&regime=pia207`,
-                    "_blank"
-                  )
-                }
-                className={styles["btn-ghost"]}
-              >
-                Exporter PDF (PIA-207)
-              </button>
-            )}
+            {(Object.keys(REGIME_SHORT) as Regime[])
+              .filter((r) =>
+                entries.some(
+                  (e) => e.regime === r && e.validation_status === "validated"
+                )
+              )
+              .map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `/api/carnet/pdf?instructor_shooter_id=${id}&regime=${r}`,
+                      "_blank"
+                    )
+                  }
+                  className={styles["btn-ghost"]}
+                >
+                  Exporter PDF ({REGIME_SHORT[r]})
+                </button>
+              ))}
           </div>
 
           {actionError && (

@@ -432,7 +432,6 @@ function EntryRow({
         </span>
         <span>
           <Badge color={STATUS_COLOR[e.validation_status]}>
-            {locked ? "🔒 " : ""}
             {VALIDATION_LABELS[e.validation_status]}
           </Badge>
         </span>

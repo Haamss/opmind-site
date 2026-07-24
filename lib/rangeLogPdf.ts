@@ -142,7 +142,8 @@ export function downloadRangeLogPdf(payload: RangeLogPdfPayload) {
       "Totaux",
       `${totalRounds} cartouches · ${totalMinutes > 0 ? fmtDuration(totalMinutes) : "durée non renseignée"}`,
     ],
-    ["Seuil applicable", REQUIREMENT_LABELS[regime]],
+    // « ≥ » absent de la fonte helvetica jsPDF (WinAnsi) → « >= » dans le PDF.
+    ["Seuil applicable", REQUIREMENT_LABELS[regime].replace(/≥/g, ">=")],
     ["Réf. document", docRef],
   ];
 

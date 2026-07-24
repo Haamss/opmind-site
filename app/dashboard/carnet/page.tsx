@@ -8,6 +8,7 @@ import styles from "@/components/dashboard/dashboard.module.css";
 import { Breadcrumb, EmptyState } from "@/components/dashboard/ui";
 import { formatDate } from "@/components/dashboard/data";
 import { RangeLogForm } from "@/components/dashboard/RangeLogForm";
+import { downloadRangeLogPdf } from "@/lib/rangeLogPdf";
 import {
   evaluateCompliance,
   type ComplianceVerdict,
@@ -212,7 +213,11 @@ function CarnetDetail() {
           </div>
 
           {/* CONFORMITÉ — verdict + compteurs 12 mois */}
-          <ComplianceStrip compliance={compliance} entries={entries} />
+          <ComplianceStrip
+            compliance={compliance}
+            entries={entries}
+            shooter={shooter}
+          />
 
           {/* SÉANCES */}
           <div className={styles["section-head"]}>
@@ -296,9 +301,11 @@ function CarnetDetail() {
 function ComplianceStrip({
   compliance,
   entries,
+  shooter,
 }: {
   compliance: RegimeCompliance[];
   entries: RangeLogEntry[];
+  shooter: Shooter;
 }) {
   const regimes = Object.keys(REGIME_LABELS) as Regime[];
   // Séances 'tir_controle' validées sur 12 mois glissants (seuil club) : la vue
@@ -321,6 +328,9 @@ function ComplianceStrip({
     <div className={styles["kpi-grid"]} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
       {regimes.map((r) => {
         const c = compliance.find((x) => x.regime === r);
+        const validatedCount = entries.filter(
+          (e) => e.regime === r && e.validation_status === "validated"
+        ).length;
         const sessions = c?.validated_sessions_12m ?? 0;
         const minutes = c?.validated_minutes_12m ?? 0;
         const rounds = c?.validated_rounds_12m ?? 0;
@@ -352,6 +362,20 @@ function ComplianceStrip({
             <span className={styles["kpi-sub"]}>
               {fmtHours(minutes)} · {rounds} cartouches · {result.requirement}
             </span>
+            {/* Export PDF : relevé signable, entrées VALIDÉES uniquement —
+                masqué tant qu'il n'y a rien à exporter. */}
+            {validatedCount > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadRangeLogPdf({ shooter, regime: r, entries })
+                }
+                className={styles["btn-mini"]}
+                style={{ marginTop: 10, justifySelf: "start" }}
+              >
+                Exporter PDF ({validatedCount})
+              </button>
+            )}
           </div>
         );
       })}

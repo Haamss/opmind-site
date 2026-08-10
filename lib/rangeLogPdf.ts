@@ -143,7 +143,12 @@ export function downloadRangeLogPdf(payload: RangeLogPdfPayload) {
       `${totalRounds} cartouches · ${totalMinutes > 0 ? fmtDuration(totalMinutes) : "durée non renseignée"}`,
     ],
     // « ≥ » absent de la fonte helvetica jsPDF (WinAnsi) → « >= » dans le PDF.
-    ["Seuil applicable", REQUIREMENT_LABELS[regime].replace(/≥/g, ">=")],
+    [
+      "Portée",
+      regime === "pia207"
+        ? "Suivi indicatif — appréciation réservée à l'autorité compétente."
+        : `${REQUIREMENT_LABELS[regime].replace(/≥/g, ">=")} — appréciation réservée à l'autorité compétente.`,
+    ],
     ["Réf. document", docRef],
   ];
 

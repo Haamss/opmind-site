@@ -53,6 +53,24 @@ type ProfileLite = {
   role?: string | null;
 };
 
+/**
+ * Palier d'abonnement instructeur.
+ *
+ * Source UNIQUE : vue public.instructor_plan_status (security_invoker, filtrée
+ * par la RLS de profiles). Aucun plafond n'est écrit en dur côté client :
+ * max_shooters NULL = illimité, at_limit est calculé en base.
+ * Absence de ligne (palier inconnu) = on n'affiche ni compteur ni blocage.
+ */
+type PlanStatus = {
+  plan: string | null;
+  plan_expired: boolean | null;
+  label: string | null;
+  max_shooters: number | null;
+  shooter_count: number | null;
+  remaining: number | null;
+  at_limit: boolean | null;
+};
+
 type DerivedShooter = {
   row: Shooter;
   sessions: UnifiedSession[];
@@ -187,6 +205,7 @@ export default function MesTireursPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileLite | null>(null);
   const [shooters, setShooters] = useState<DerivedShooter[]>([]);
+  const [plan, setPlan] = useState<PlanStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
@@ -211,6 +230,20 @@ export default function MesTireursPage() {
             .eq("id", userId)
             .maybeSingle();
           if (!cancelled && prof) setProfile(prof as ProfileLite);
+        } catch {
+          /* ignore */
+        }
+
+        // Palier : lu uniquement depuis la vue, jamais recalculé côté client.
+        try {
+          const { data: ps } = await sb
+            .from("instructor_plan_status")
+            .select(
+              "plan,plan_expired,label,max_shooters,shooter_count,remaining,at_limit"
+            )
+            .eq("instructor_id", userId)
+            .maybeSingle();
+          if (!cancelled && ps) setPlan(ps as PlanStatus);
         } catch {
           /* ignore */
         }
@@ -415,12 +448,16 @@ export default function MesTireursPage() {
       {/* Top header */}
       <TopHeader search={search} onSearch={setSearch} />
 
+      {/* Palier expiré : information, pas une erreur — rien n'est masqué. */}
+      <PlanExpiredBanner plan={plan} />
+
       <main style={{ padding: "32px 40px 80px", display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 32 }}>
         <div style={{ minWidth: 0 }}>
           {/* Title section */}
           <TitleSection
             activeCount={activeShooters.length}
             pendingCount={pendingShooters.length}
+            plan={plan}
           />
 
           {/* Stats strip */}
@@ -461,7 +498,7 @@ export default function MesTireursPage() {
                   onOpen={() => router.push(`/dashboard/shooter?id=${s.row.id}`)}
                 />
               ))}
-              <InvitePlaceholder />
+              <InvitePlaceholder plan={plan} />
             </div>
           ) : (
             <div className={styles.panel} style={{ marginTop: 20 }}>
@@ -574,15 +611,67 @@ function TopHeader({
   );
 }
 
+/* ──────────────  Plan expired banner  ────────────── */
+
+/**
+ * Palier expiré : la validation est suspendue, les données restent en place.
+ * Ton informatif (ambre), pas une erreur : aucune donnée n'est masquée ni altérée.
+ */
+function PlanExpiredBanner({ plan }: { plan: PlanStatus | null }) {
+  if (plan?.plan_expired !== true) return null;
+  return (
+    <div
+      role="status"
+      style={{
+        margin: "16px 40px 0",
+        background: "rgba(245,166,35,0.10)",
+        border: "1px solid var(--amber)",
+        padding: "12px 16px",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "baseline",
+        gap: 10,
+        fontFamily: "var(--mono)",
+        letterSpacing: "0.1em",
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "var(--amber)",
+        }}
+      >
+        Abonnement expiré
+      </span>
+      <span style={{ fontSize: 11, lineHeight: 1.6, color: "var(--dim)" }}>
+        La validation est suspendue. Vos tireurs et leurs données sont conservés
+        et restent consultables.
+      </span>
+    </div>
+  );
+}
+
 /* ──────────────  Title section  ────────────── */
 
 function TitleSection({
   activeCount,
   pendingCount,
+  plan,
 }: {
   activeCount: number;
   pendingCount: number;
+  plan: PlanStatus | null;
 }) {
+  // max_shooters NULL = illimité. Palier inconnu (pas de ligne) = pas de compteur.
+  const quota =
+    plan == null || plan.shooter_count == null
+      ? null
+      : `${plan.shooter_count} / ${
+          plan.max_shooters == null ? "illimité" : plan.max_shooters
+        }`;
   return (
     <div className={styles["page-head"]}>
       <div>
@@ -603,6 +692,16 @@ function TitleSection({
           <span>Invitations</span>
           <strong>{String(pendingCount).padStart(2, "0")}</strong>
         </div>
+        {quota && (
+          <div className={styles.stat}>
+            <span>{plan?.label ? `Suivis · ${plan.label}` : "Suivis"}</span>
+            <strong
+              style={plan?.at_limit ? { color: "var(--amber)" } : undefined}
+            >
+              {quota}
+            </strong>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1233,12 +1332,15 @@ function CardFlag({ flag }: { flag: DerivedShooter["flag"] }) {
   );
 }
 
-function InvitePlaceholder() {
+function InvitePlaceholder({ plan }: { plan: PlanStatus | null }) {
+  // at_limit vient de la vue : aucun seuil n'est comparé ici.
+  const atLimit = plan?.at_limit === true;
   return (
     <div
+      aria-disabled={atLimit || undefined}
       style={{
         background: "var(--surface)",
-        border: "1px dashed var(--line-2)",
+        border: `1px dashed ${atLimit ? "var(--amber)" : "var(--line-2)"}`,
         padding: 32,
         display: "flex",
         flexDirection: "column",
@@ -1246,6 +1348,8 @@ function InvitePlaceholder() {
         justifyContent: "center",
         gap: 8,
         minHeight: 160,
+        opacity: atLimit ? 0.55 : 1,
+        cursor: atLimit ? "not-allowed" : undefined,
       }}
     >
       <span
@@ -1266,22 +1370,29 @@ function InvitePlaceholder() {
           fontWeight: 700,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: "var(--dim)",
+          color: atLimit ? "var(--amber)" : "var(--dim)",
         }}
       >
-        Inviter un tireur
+        {atLimit ? "Plafond atteint" : "Inviter un tireur"}
       </span>
       <span
         style={{
           fontFamily: "var(--mono)",
           fontSize: 10,
           fontWeight: 500,
-          letterSpacing: "0.2em",
-          textTransform: "uppercase",
+          letterSpacing: atLimit ? "0.08em" : "0.2em",
+          textTransform: atLimit ? "none" : "uppercase",
           color: "var(--dim-2)",
+          textAlign: "center",
+          lineHeight: 1.6,
+          maxWidth: 320,
         }}
       >
-        Code · Email · QR
+        {atLimit
+          ? `La formule ${plan?.label ?? plan?.plan ?? "actuelle"} permet ${
+              plan?.max_shooters
+            } tireur(s) suivi(s). Passez au palier supérieur pour en ajouter un. Vos tireurs déjà rattachés et leurs données restent accessibles.`
+          : "Code · Email · QR"}
       </span>
     </div>
   );

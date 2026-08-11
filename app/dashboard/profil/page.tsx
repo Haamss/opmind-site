@@ -158,11 +158,10 @@ export default function ProfilPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  // Rôle : affiché en lecture seule, jamais envoyé. profiles.role est immuable
+  // côté client (trigger protect_profile_fields) et contraint par
+  // profiles_role_check à 'shooter' | 'instructor'.
   const [role, setRole] = useState<RoleValue>("TIREUR");
-  // Rôle dérivé au chargement : pour ne réécrire la colonne role que si
-  // l'utilisateur change explicitement le sélecteur (sinon on préserverait
-  // par écrasement une des 5 nouvelles valeurs de profil).
-  const [initialRole, setInitialRole] = useState<RoleValue>("TIREUR");
   const [club, setClub] = useState("");
   const [bio, setBio] = useState("");
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -174,6 +173,7 @@ export default function ProfilPage() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [pwSent, setPwSent] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -237,7 +237,6 @@ export default function ProfilPage() {
             ? "INSTRUCTEUR"
             : "TIREUR";
         setRole(derivedRole);
-        setInitialRole(derivedRole);
 
         const { count: shootersCount } = await sb
           .from("instructor_shooters")
@@ -311,6 +310,7 @@ export default function ProfilPage() {
     if (!userId) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const sb = getSupabase();
       const fn = firstName.trim();
@@ -328,25 +328,24 @@ export default function ProfilPage() {
         profile_data: nextProfileData,
       };
 
-      // On ne touche au rôle que si l'utilisateur a explicitement changé le
-      // sélecteur (TIREUR/INSTRUCTEUR/ADMIN). Sinon on laisse la valeur DB
-      // intacte (préserve militaire/police/ipsc/instructeur/autre).
-      if (role !== initialRole) {
-        // TIREUR -> "shooter" (fonction tireur) ; INSTRUCTEUR/ADMIN ->
-        // "instructeur" (fonction instructeur), is_admin distingue l'admin.
-        upsertRow.role = role === "TIREUR" ? "shooter" : "instructeur";
-        upsertRow.is_admin = role === "ADMIN";
-      }
+      // role / is_admin ne sont volontairement PAS envoyés : le trigger
+      // protect_profile_fields les restaure côté base, et profiles_role_check
+      // n'accepte que 'shooter' | 'instructor'. Les inclure faisait échouer
+      // l'upsert entier (23514) — donc perdre aussi nom, club, bio, chargeurs.
 
       const { error } = await sb
         .from("profiles")
         .upsert(upsertRow, { onConflict: "id" });
-      if (!error) {
+      if (error) {
+        setSaveError(error.message);
+      } else {
         setProfileData(nextProfileData);
         setSaved(true);
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? e.message : "Échec de l'enregistrement."
+      );
     } finally {
       setSaving(false);
     }
@@ -502,25 +501,21 @@ export default function ProfilPage() {
               </div>
             </Field>
 
-            <Field label="Rôle">
+            <Field
+              label="Rôle"
+              note="Défini par l'administration · non modifiable ici"
+            >
               <div style={{ position: "relative" }}>
-                <select
-                  value={role}
-                  onChange={(e) => {
-                    setRole(e.target.value as RoleValue);
-                    setSaved(false);
-                  }}
+                <div
                   style={{
                     ...inputStyle,
                     width: "100%",
-                    appearance: "none",
-                    cursor: "pointer",
+                    color: INK_DIM,
+                    cursor: "default",
                   }}
                 >
-                  <option value="INSTRUCTEUR">INSTRUCTEUR</option>
-                  <option value="TIREUR">TIREUR</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
+                  {role}
+                </div>
                 <span
                   style={{
                     position: "absolute",
@@ -529,11 +524,11 @@ export default function ProfilPage() {
                     transform: "translateY(-50%)",
                     color: INK_DIM,
                     pointerEvents: "none",
-                    fontSize: 11,
+                    display: "inline-flex",
                   }}
                   aria-hidden
                 >
-                  ▾
+                  <IconLock />
                 </span>
               </div>
             </Field>
@@ -598,6 +593,20 @@ export default function ProfilPage() {
                   }}
                 >
                   Modifications enregistrées localement et synchronisées
+                </span>
+              )}
+              {saveError && (
+                <span
+                  role="alert"
+                  style={{
+                    fontFamily: FONT_RAJ,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.1em",
+                    color: ACCENT,
+                  }}
+                >
+                  Échec de l&apos;enregistrement · {saveError}
                 </span>
               )}
             </div>

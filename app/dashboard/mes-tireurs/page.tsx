@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "../../../lib/supabase";
 import {
@@ -197,6 +206,64 @@ function initials(name: string): string {
   );
 }
 
+/* ──────────────  Chargement  ────────────── */
+
+/**
+ * Palier + râtelier dérivé pour un instructeur.
+ *
+ * Extrait hors du composant pour être appelé par DEUX chemins sans duplication :
+ * le chargement initial et le rafraîchissement après ajout d'un tireur (le
+ * compteur de la vue doit repartir de la base, jamais d'un incrément local).
+ */
+async function fetchRoster(userId: string): Promise<{
+  plan: PlanStatus | null;
+  shooters: DerivedShooter[];
+}> {
+  const sb = getSupabase();
+
+  // Palier : lu uniquement depuis la vue, jamais recalculé côté client.
+  let plan: PlanStatus | null = null;
+  try {
+    const { data: ps } = await sb
+      .from("instructor_plan_status")
+      .select(
+        "plan,plan_expired,label,max_shooters,shooter_count,remaining,at_limit"
+      )
+      .eq("instructor_id", userId)
+      .maybeSingle();
+    if (ps) plan = ps as PlanStatus;
+  } catch {
+    /* ignore */
+  }
+
+  const { data: rows } = await sb
+    .from("instructor_shooters")
+    .select(
+      "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status"
+    )
+    .eq("instructor_id", userId)
+    .order("linked_at", { ascending: false });
+
+  // Nom affiché = profil lié (shooter_id renseigné) ; sinon libellé manuel.
+  const list = await resolveShooterNames((rows as Shooter[] | null) || []);
+  // Source unifiée : manual_sessions + module_sessions (activité réelle app).
+  const unified = await fetchUnifiedSessions(list);
+  const sessionsByShooter = unified.reduce<Record<string, UnifiedSession[]>>(
+    (acc, s) => {
+      (acc[s.instructor_shooter_id] ||= []).push(s);
+      return acc;
+    },
+    {}
+  );
+
+  return {
+    plan,
+    shooters: list.map((row) =>
+      deriveShooter(row, sessionsByShooter[row.id] || [])
+    ),
+  };
+}
+
 /* ──────────────  Page  ────────────── */
 
 type FilterKey = "all" | "A" | "B" | "C" | "D";
@@ -204,9 +271,11 @@ type FilterKey = "all" | "A" | "B" | "C" | "D";
 export default function MesTireursPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileLite | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [shooters, setShooters] = useState<DerivedShooter[]>([]);
   const [plan, setPlan] = useState<PlanStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -221,56 +290,25 @@ export default function MesTireursPage() {
           data: { session },
         } = await sb.auth.getSession();
         if (!session || cancelled) return;
-        const userId = session.user.id;
+        const uid = session.user.id;
+        if (!cancelled) setUserId(uid);
 
         try {
           const { data: prof } = await sb
             .from("profiles")
             .select("first_name,last_name,email,role")
-            .eq("id", userId)
+            .eq("id", uid)
             .maybeSingle();
           if (!cancelled && prof) setProfile(prof as ProfileLite);
         } catch {
           /* ignore */
         }
 
-        // Palier : lu uniquement depuis la vue, jamais recalculé côté client.
-        try {
-          const { data: ps } = await sb
-            .from("instructor_plan_status")
-            .select(
-              "plan,plan_expired,label,max_shooters,shooter_count,remaining,at_limit"
-            )
-            .eq("instructor_id", userId)
-            .maybeSingle();
-          if (!cancelled && ps) setPlan(ps as PlanStatus);
-        } catch {
-          /* ignore */
+        const roster = await fetchRoster(uid);
+        if (!cancelled) {
+          setPlan(roster.plan);
+          setShooters(roster.shooters);
         }
-
-        const { data: rows } = await sb
-          .from("instructor_shooters")
-          .select(
-            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status"
-          )
-          .eq("instructor_id", userId)
-          .order("linked_at", { ascending: false });
-
-        // Nom affiché = profil lié (shooter_id renseigné) ; sinon libellé manuel.
-        const list = await resolveShooterNames((rows as Shooter[] | null) || []);
-        // Source unifiée : manual_sessions + module_sessions (activité réelle app).
-        const unified = await fetchUnifiedSessions(list);
-        const sessionsByShooter = unified.reduce<
-          Record<string, UnifiedSession[]>
-        >((acc, s) => {
-          (acc[s.instructor_shooter_id] ||= []).push(s);
-          return acc;
-        }, {});
-
-        const derived = list.map((row) =>
-          deriveShooter(row, sessionsByShooter[row.id] || [])
-        );
-        if (!cancelled) setShooters(derived);
       } catch {
         /* ignore */
       } finally {
@@ -281,6 +319,15 @@ export default function MesTireursPage() {
       cancelled = true;
     };
   }, []);
+
+  // Après ajout : liste ET compteur repartent de la base, jamais d'un
+  // incrément local (le plafond est arbitré côté serveur).
+  const reloadRoster = useCallback(async () => {
+    if (!userId) return;
+    const roster = await fetchRoster(userId);
+    setPlan(roster.plan);
+    setShooters(roster.shooters);
+  }, [userId]);
 
   const counts = useMemo(() => {
     const c: Record<FilterKey, number> = {
@@ -498,7 +545,10 @@ export default function MesTireursPage() {
                   onOpen={() => router.push(`/dashboard/shooter?id=${s.row.id}`)}
                 />
               ))}
-              <InvitePlaceholder plan={plan} />
+              <InvitePlaceholder
+                plan={plan}
+                onAdd={() => setAddOpen(true)}
+              />
             </div>
           ) : (
             <div className={styles.panel} style={{ marginTop: 20 }}>
@@ -546,6 +596,14 @@ export default function MesTireursPage() {
           <ActivityFeedPanel events={liveFeed} />
         </aside>
       </main>
+
+      {addOpen && userId && (
+        <AddShooterModal
+          instructorId={userId}
+          onClose={() => setAddOpen(false)}
+          onCreated={reloadRoster}
+        />
+      )}
     </div>
   );
 }
@@ -1332,12 +1390,21 @@ function CardFlag({ flag }: { flag: DerivedShooter["flag"] }) {
   );
 }
 
-function InvitePlaceholder({ plan }: { plan: PlanStatus | null }) {
+function InvitePlaceholder({
+  plan,
+  onAdd,
+}: {
+  plan: PlanStatus | null;
+  onAdd: () => void;
+}) {
   // at_limit vient de la vue : aucun seuil n'est comparé ici.
   const atLimit = plan?.at_limit === true;
   return (
-    <div
-      aria-disabled={atLimit || undefined}
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={atLimit}
+      aria-label="Ajouter un tireur"
       style={{
         background: "var(--surface)",
         border: `1px dashed ${atLimit ? "var(--amber)" : "var(--line-2)"}`,
@@ -1349,7 +1416,10 @@ function InvitePlaceholder({ plan }: { plan: PlanStatus | null }) {
         gap: 8,
         minHeight: 160,
         opacity: atLimit ? 0.55 : 1,
-        cursor: atLimit ? "not-allowed" : undefined,
+        cursor: atLimit ? "not-allowed" : "pointer",
+        font: "inherit",
+        textAlign: "center",
+        width: "100%",
       }}
     >
       <span
@@ -1392,9 +1462,301 @@ function InvitePlaceholder({ plan }: { plan: PlanStatus | null }) {
           ? `La formule ${plan?.label ?? plan?.plan ?? "actuelle"} permet ${
               plan?.max_shooters
             } tireur(s) suivi(s). Passez au palier supérieur pour en ajouter un. Vos tireurs déjà rattachés et leurs données restent accessibles.`
-          : "Code · Email · QR"}
+          : "Génère un code d'invitation"}
       </span>
+    </button>
+  );
+}
+
+/* ──────────────  Add shooter modal  ────────────── */
+
+/**
+ * Ajout d'un tireur au râtelier.
+ *
+ * N'envoie que instructor_id / name / unit / grade : invite_code est produit
+ * par le trigger trg_invite_code, et status / invite_status ont leurs defaults
+ * en base. Le plafond est arbitré par trg_enforce_shooter_plan_limit — le
+ * bouton désactivé n'est qu'un confort, la garde autoritaire reste serveur.
+ */
+function AddShooterModal({
+  instructorId,
+  onClose,
+  onCreated,
+}: {
+  instructorId: string;
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [unit, setUnit] = useState("");
+  const [grade, setGrade] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (submitting) return;
+    const n = name.trim();
+    if (!n) {
+      setSaveError("Le nom est requis.");
+      return;
+    }
+    setSubmitting(true);
+    setSaveError(null);
+    try {
+      const { data, error } = await getSupabase()
+        .from("instructor_shooters")
+        .insert({
+          instructor_id: instructorId,
+          name: n,
+          unit: unit.trim() || null,
+          grade: grade.trim() || null,
+        })
+        .select("invite_code")
+        .single();
+      if (error) {
+        setSaveError(error.message);
+        return;
+      }
+      setCreatedCode((data as { invite_code: string | null }).invite_code);
+      await onCreated();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Échec de l'ajout.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onCopy() {
+    if (!createdCode) return;
+    try {
+      await navigator.clipboard.writeText(createdCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard indisponible — silencieux */
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ajouter un tireur"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        background: "rgba(0,0,0,0.8)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 460,
+          background: "var(--bg)",
+          border: "1px solid var(--line)",
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
+        <div className={styles["panel-head"]}>
+          <span className={styles.title}>
+            {createdCode ? "Tireur ajouté" : "Nouveau tireur"}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className={styles["btn-mini"]}
+          >
+            ✕
+          </button>
+        </div>
+
+        {createdCode ? (
+          <div
+            style={{
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "var(--dim)",
+              }}
+            >
+              Code d&apos;invitation
+            </span>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--line-2)",
+                  padding: "12px 16px",
+                  fontFamily: "var(--mono)",
+                  fontSize: 24,
+                  fontWeight: 700,
+                  letterSpacing: "0.32em",
+                  color: "var(--ink)",
+                }}
+              >
+                {createdCode || "——————"}
+              </div>
+              <button
+                type="button"
+                onClick={onCopy}
+                className={styles["btn-mini"]}
+                style={{ flexShrink: 0, padding: "0 16px" }}
+              >
+                {copied ? "Copié" : "Copier"}
+              </button>
+            </div>
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                lineHeight: 1.6,
+                color: "var(--dim)",
+              }}
+            >
+              Communiquez ce code au tireur : il le saisit dans l&apos;app pour
+              rejoindre votre groupe.
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles["btn-mini"]}
+              style={{ alignSelf: "flex-start" }}
+            >
+              Terminé
+            </button>
+          </div>
+        ) : (
+          <form
+            onSubmit={onSubmit}
+            style={{
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <ModalField label="Nom *">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+                required
+                style={MODAL_INPUT}
+              />
+            </ModalField>
+            <ModalField label="Unité (optionnel)">
+              <input
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                style={MODAL_INPUT}
+              />
+            </ModalField>
+            <ModalField label="Grade (optionnel)">
+              <input
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                style={MODAL_INPUT}
+              />
+            </ModalField>
+
+            {saveError && (
+              <span
+                role="alert"
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  lineHeight: 1.6,
+                  color: "var(--red)",
+                }}
+              >
+                {saveError}
+              </span>
+            )}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button
+                type="submit"
+                disabled={submitting}
+                className={styles["btn-mini"]}
+                style={{
+                  borderColor: "var(--red)",
+                  color: "var(--red)",
+                  opacity: submitting ? 0.6 : 1,
+                }}
+              >
+                {submitting ? "Ajout…" : "Ajouter"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={styles["btn-mini"]}
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
+  );
+}
+
+const MODAL_INPUT: CSSProperties = {
+  background: "var(--surface-2)",
+  border: "1px solid var(--line-2)",
+  color: "var(--ink)",
+  padding: "9px 12px",
+  fontFamily: "var(--mono)",
+  fontSize: 12,
+  outline: "none",
+  width: "100%",
+};
+
+function ModalField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "var(--dim-2)",
+        }}
+      >
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 

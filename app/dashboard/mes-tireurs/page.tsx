@@ -19,6 +19,10 @@ import {
 import { fmtDot, accuracyPct } from "../../../components/dashboard/format";
 import { basiquePrecision } from "../../../components/dashboard/scoring";
 import { EmptyState } from "../../../components/dashboard/ui";
+import {
+  PlanBlockedNotice,
+  supabaseErrorCode,
+} from "../../../components/dashboard/planError";
 import styles from "../../../components/dashboard/dashboard.module.css";
 import type {
   Shooter,
@@ -1492,6 +1496,8 @@ function AddShooterModal({
   const [grade, setGrade] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Erreur brute conservée à part : OM001 se rend avec son hint et un CTA.
+  const [planError, setPlanError] = useState<unknown>(null);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -1505,6 +1511,7 @@ function AddShooterModal({
     }
     setSubmitting(true);
     setSaveError(null);
+    setPlanError(null);
     try {
       const { data, error } = await getSupabase()
         .from("instructor_shooters")
@@ -1517,7 +1524,10 @@ function AddShooterModal({
         .select("invite_code")
         .single();
       if (error) {
-        setSaveError(error.message);
+        // OM001 : plafond de formule. Message et hint viennent de la base,
+        // rendus tels quels avec le CTA. Tout autre code garde l'inline.
+        if (supabaseErrorCode(error) === "OM001") setPlanError(error);
+        else setSaveError(error.message);
         return;
       }
       setCreatedCode((data as { invite_code: string | null }).invite_code);
@@ -1680,6 +1690,8 @@ function AddShooterModal({
                 style={MODAL_INPUT}
               />
             </ModalField>
+
+            {planError != null && <PlanBlockedNotice error={planError} />}
 
             {saveError && (
               <span

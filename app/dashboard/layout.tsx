@@ -4,12 +4,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "../../lib/supabase";
 import DashboardSidebar from "./_components/Sidebar";
+import { UpgradeCta } from "../../components/dashboard/planError";
+import { fmtDot } from "../../components/dashboard/format";
 
 type LayoutProfile = {
   first_name?: string | null;
   last_name?: string | null;
   role?: string | null;
   email?: string | null;
+};
+
+/**
+ * Palier d'abonnement, lu depuis la vue public.instructor_plan_status.
+ *
+ * Aucun plafond ni aucune date n'est recalculé côté client : max_shooters NULL
+ * = illimité, plan_expired est arbitré en base. Pas de ligne dans la vue (un
+ * tireur, par exemple) = pas de bandeau.
+ */
+type LayoutPlan = {
+  label: string | null;
+  plan: string | null;
+  plan_expired: boolean | null;
+  plan_expires_at: string | null;
+  max_shooters: number | null;
+  shooter_count: number | null;
 };
 
 export default function DashboardLayout({
@@ -25,6 +43,7 @@ export default function DashboardLayout({
     sessions: number;
     shooters: number;
   }>({ stages: 0, sessions: 0, shooters: 0 });
+  const [plan, setPlan] = useState<LayoutPlan | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +75,20 @@ export default function DashboardLayout({
         }
       } catch {
         if (!cancelled) setProfile({ email: userEmail });
+      }
+
+      // Palier : source unique, aucun seuil en dur côté client.
+      try {
+        const { data: ps } = await sb
+          .from("instructor_plan_status")
+          .select(
+            "label,plan,plan_expired,plan_expires_at,max_shooters,shooter_count"
+          )
+          .eq("instructor_id", userId)
+          .maybeSingle();
+        if (!cancelled && ps) setPlan(ps as LayoutPlan);
+      } catch {
+        /* ignore */
       }
 
       const safeCount = async (
@@ -121,7 +154,79 @@ export default function DashboardLayout({
         sessionsCount={counts.sessions}
         shootersCount={counts.shooters}
       />
-      <div style={{ marginLeft: 220, minHeight: "100vh" }}>{children}</div>
+      <div style={{ marginLeft: 220, minHeight: "100vh" }}>
+        <PlanBanner plan={plan} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────  Bandeau de palier  ────────────── */
+
+/**
+ * Bandeau permanent : formule, quota, échéance.
+ *
+ * Les tokens du design system sont scopés sur `.page` : ce composant vit hors
+ * de cette portée, d'où les couleurs littérales (comme le reste du layout).
+ */
+function PlanBanner({ plan }: { plan: LayoutPlan | null }) {
+  if (!plan) return null;
+  const expired = plan.plan_expired === true;
+  const quota =
+    plan.shooter_count == null
+      ? null
+      : `${plan.shooter_count} / ${
+          plan.max_shooters == null ? "illimité" : plan.max_shooters
+        } tireurs`;
+  const accent = expired ? "#E84040" : "rgba(235,229,210,0.16)";
+
+  return (
+    <div
+      role={expired ? "alert" : "status"}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 14,
+        padding: "10px 24px",
+        borderBottom: `1px solid ${accent}`,
+        background: expired ? "rgba(232,64,64,0.10)" : "transparent",
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: 10,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
+      }}
+    >
+      <span style={{ fontWeight: 700, color: expired ? "#E84040" : "#ebe5d2" }}>
+        {plan.label ?? plan.plan ?? "Formule"}
+      </span>
+      {quota && (
+        <span style={{ color: "rgba(235,229,210,0.65)" }}>{quota}</span>
+      )}
+      {plan.plan_expires_at && (
+        <span style={{ color: expired ? "#E84040" : "rgba(235,229,210,0.45)" }}>
+          {expired ? "Expirée le" : "Jusqu'au"}{" "}
+          {fmtDot(plan.plan_expires_at, true)}
+        </span>
+      )}
+      {expired && (
+        <span
+          style={{
+            color: "rgba(235,229,210,0.65)",
+            textTransform: "none",
+            letterSpacing: "0.06em",
+            fontSize: 11,
+          }}
+        >
+          Validation suspendue. Vos tireurs et leurs données sont conservés.
+        </span>
+      )}
+      {expired && (
+        <span style={{ marginLeft: "auto" }}>
+          <UpgradeCta label="Passer au palier supérieur" />
+        </span>
+      )}
     </div>
   );
 }

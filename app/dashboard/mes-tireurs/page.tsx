@@ -499,9 +499,6 @@ export default function MesTireursPage() {
       {/* Top header */}
       <TopHeader search={search} onSearch={setSearch} />
 
-      {/* Palier expiré : information, pas une erreur — rien n'est masqué. */}
-      <PlanExpiredBanner plan={plan} />
-
       <main style={{ padding: "32px 40px 80px", display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 32 }}>
         <div style={{ minWidth: 0 }}>
           {/* Title section */}
@@ -670,49 +667,6 @@ function TopHeader({
         }}
       />
     </header>
-  );
-}
-
-/* ──────────────  Plan expired banner  ────────────── */
-
-/**
- * Palier expiré : la validation est suspendue, les données restent en place.
- * Ton informatif (ambre), pas une erreur : aucune donnée n'est masquée ni altérée.
- */
-function PlanExpiredBanner({ plan }: { plan: PlanStatus | null }) {
-  if (plan?.plan_expired !== true) return null;
-  return (
-    <div
-      role="status"
-      style={{
-        margin: "16px 40px 0",
-        background: "rgba(245,166,35,0.10)",
-        border: "1px solid var(--amber)",
-        padding: "12px 16px",
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "baseline",
-        gap: 10,
-        fontFamily: "var(--mono)",
-        letterSpacing: "0.1em",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--amber)",
-        }}
-      >
-        Abonnement expiré
-      </span>
-      <span style={{ fontSize: 11, lineHeight: 1.6, color: "var(--dim)" }}>
-        La validation est suspendue. Vos tireurs et leurs données sont conservés
-        et restent consultables.
-      </span>
-    </div>
   );
 }
 

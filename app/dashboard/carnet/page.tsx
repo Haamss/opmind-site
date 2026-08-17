@@ -8,6 +8,10 @@ import styles from "@/components/dashboard/dashboard.module.css";
 import { Breadcrumb, EmptyState } from "@/components/dashboard/ui";
 import { formatDate } from "@/components/dashboard/data";
 import { RangeLogForm } from "@/components/dashboard/RangeLogForm";
+import {
+  PlanBlockedNotice,
+  supabaseErrorCode,
+} from "@/components/dashboard/planError";
 import { downloadRangeLogPdf } from "@/lib/rangeLogPdf";
 import {
   evaluateCompliance,
@@ -89,6 +93,8 @@ function CarnetDetail() {
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Erreur brute conservée à part : OM002 se rend avec son hint et un CTA.
+  const [planError, setPlanError] = useState<unknown>(null);
   const [formOpen, setFormOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -136,16 +142,24 @@ function CarnetDetail() {
     async (entry: RangeLogEntry, action: "validate" | "reject") => {
       setBusyId(entry.id);
       setActionError(null);
+      setPlanError(null);
       try {
         const note = noteById[entry.id]?.trim();
         await validateRangeLogEntry(entry.id, action, note || undefined);
         await load();
       } catch (e) {
-        setActionError(
-          `Action impossible : ${
-            e instanceof Error ? e.message : "erreur inconnue"
-          }`
-        );
+        // OM002 (validate_range_log_entry) : formule inactive. Message et hint
+        // viennent de la base et sont rendus tels quels, avec le CTA — pas de
+        // reformulation en « Action impossible ».
+        if (supabaseErrorCode(e) === "OM002") {
+          setPlanError(e);
+        } else {
+          setActionError(
+            `Action impossible : ${
+              e instanceof Error ? e.message : "erreur inconnue"
+            }`
+          );
+        }
       } finally {
         setBusyId(null);
       }
@@ -240,6 +254,12 @@ function CarnetDetail() {
               Saisir une séance
             </button>
           </div>
+
+          {planError != null && (
+            <div style={{ marginBottom: 16 }}>
+              <PlanBlockedNotice error={planError} />
+            </div>
+          )}
 
           {actionError && (
             <div className="mb-4 border border-[#E84040]/50 bg-[#E84040]/[0.08] px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-[#E84040]">

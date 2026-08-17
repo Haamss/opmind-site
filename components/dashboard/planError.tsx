@@ -54,7 +54,13 @@ export function instructorPaymentLink(): string | null {
   return url && url.trim() ? url : null;
 }
 
-/** CTA de montée en gamme. Ne rend rien si le lien n'est pas configuré. */
+/**
+ * CTA de montée en gamme. Ne rend rien si le lien n'est pas configuré.
+ *
+ * Les tokens du design system sont scopés sur `.page` (dashboard.module.css) :
+ * ce composant est aussi monté depuis app/dashboard/layout.tsx, qui est hors
+ * de cette portée. D'où les valeurs de repli sur chaque var().
+ */
 export function UpgradeCta({ label }: { label: string }) {
   const href = instructorPaymentLink();
   if (!href) return null;
@@ -65,15 +71,16 @@ export function UpgradeCta({ label }: { label: string }) {
       rel="noopener noreferrer"
       style={{
         alignSelf: "flex-start",
-        fontFamily: "var(--mono)",
+        fontFamily: 'var(--mono, "JetBrains Mono", monospace)',
         fontSize: 10,
         fontWeight: 700,
         letterSpacing: "0.18em",
         textTransform: "uppercase",
-        color: "var(--red)",
-        border: "1px solid var(--red)",
+        color: "var(--red, #E84040)",
+        border: "1px solid var(--red, #E84040)",
         padding: "7px 12px",
         textDecoration: "none",
+        whiteSpace: "nowrap",
       }}
     >
       {label}

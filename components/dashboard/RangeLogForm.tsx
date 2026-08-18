@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { Shooter } from "./types";
+import { DbErrorNotice, supabaseErrorCode } from "./planError";
 import {
+  fetchDeclaredRegimes,
   insertRangeLogEntry,
   REGIME_LABELS,
   REGIME_OPTIONS,
@@ -33,7 +35,14 @@ function nowLocal(): string {
 
 export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
   const [date, setDate] = useState<string>(() => nowLocal());
-  const [regime, setRegime] = useState<Regime>("pia207");
+  // Régimes déclarés du tireur : null tant que non chargé, puis la liste
+  // résolue (profil du tireur lié, sinon râtelier) ou null si rien n'est
+  // déclaré — auquel cas on retombe sur les trois, comme la base qui laisse
+  // passer. Le régime courant n'est JAMAIS figé sur une valeur en dur.
+  const [declared, setDeclared] = useState<Regime[] | null>(null);
+  const [regimesLoaded, setRegimesLoaded] = useState(false);
+  const options: Regime[] = declared ?? REGIME_OPTIONS;
+  const [regime, setRegime] = useState<Regime>(() => REGIME_OPTIONS[0]);
   const [sessionType, setSessionType] = useState<string>("tir_controle");
   const [location, setLocation] = useState("");
   const [duration, setDuration] = useState("");
@@ -43,6 +52,23 @@ export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Erreur brute conservée à part : OM006 se rend avec son hint, sans CTA.
+  const [dbError, setDbError] = useState<unknown>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await fetchDeclaredRegimes(shooter);
+      if (cancelled) return;
+      setDeclared(list);
+      // Valeur initiale = premier régime réellement proposé.
+      setRegime((list ?? REGIME_OPTIONS)[0]);
+      setRegimesLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shooter]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +86,7 @@ export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
       duration === "" ? null : Math.max(0, Math.round(Number(duration)));
     setSubmitting(true);
     setError(null);
+    setDbError(null);
     try {
       const {
         data: { session },
@@ -82,9 +109,14 @@ export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
       onCreated();
       onClose();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Erreur lors de l'enregistrement"
-      );
+      // OM006 : régime non déclaré pour ce tireur. Message et hint viennent de
+      // la base et sont rendus tels quels — SANS CTA : c'est une erreur de
+      // saisie, pas un mur payant.
+      if (supabaseErrorCode(e) === "OM006") setDbError(e);
+      else
+        setError(
+          e instanceof Error ? e.message : "Erreur lors de l'enregistrement"
+        );
       setSubmitting(false);
     }
   }
@@ -121,17 +153,37 @@ export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
             </Field>
 
             <Field label="Régime *">
-              <select
-                value={regime}
-                onChange={(e) => setRegime(e.target.value as Regime)}
-                className={inputCls}
-              >
-                {REGIME_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {REGIME_LABELS[r]}
-                  </option>
-                ))}
-              </select>
+              {options.length === 1 ? (
+                // Un seul régime déclaré : pas de choix à offrir, la valeur
+                // est imposée et affichée en clair.
+                <div
+                  className={`${inputCls} flex items-center justify-between`}
+                >
+                  <span>{REGIME_LABELS[options[0]]}</span>
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-[#666]">
+                    Seul régime déclaré
+                  </span>
+                </div>
+              ) : (
+                <select
+                  value={regime}
+                  onChange={(e) => setRegime(e.target.value as Regime)}
+                  className={inputCls}
+                >
+                  {options.map((r) => (
+                    <option key={r} value={r}>
+                      {REGIME_LABELS[r]}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {regimesLoaded && declared === null && (
+                <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-[#666]">
+                  Aucun régime déclaré pour ce tireur : les trois restent
+                  proposés. Déclarez-les sur sa fiche pour restreindre la
+                  saisie.
+                </p>
+              )}
             </Field>
 
             <Field label="Type de séance">
@@ -214,6 +266,8 @@ export function RangeLogForm({ shooter, onClose, onCreated }: Props) {
               placeholder="Contexte, exercices, observations."
             />
           </Field>
+
+          {dbError != null && <DbErrorNotice error={dbError} />}
 
           {error && (
             <div className="border border-[#E84040]/50 bg-[#E84040]/[0.08] px-3 py-2 font-mono text-xs text-[#E84040]">

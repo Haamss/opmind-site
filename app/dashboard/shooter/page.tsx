@@ -17,9 +17,11 @@ import {
 } from "@/components/dashboard/data";
 import { moduleLabel } from "@/components/dashboard/modules";
 import {
+  fetchRegimeSources,
   REGIME_LABELS,
   REGIME_OPTIONS,
   type Regime,
+  type RegimeSources,
 } from "@/components/dashboard/rangeLog";
 import styles from "@/components/dashboard/dashboard.module.css";
 import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
@@ -1162,6 +1164,20 @@ function RegimeEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Ce que le tireur lié déclare de son côté : lecture seule, via la MÊME
+  // requête que le résolveur de précédence (aucune requête supplémentaire).
+  const [sources, setSources] = useState<RegimeSources | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const s = await fetchRegimeSources(shooter);
+      if (!cancelled) setSources(s);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shooter]);
 
   const dirty =
     selected.length !== declared.length ||
@@ -1250,9 +1266,15 @@ function RegimeEditor({
             color: "var(--dim-2)",
           }}
         >
-          {shooter.shooter_id
-            ? "Ce tireur a un compte : les régimes déclarés sur son profil font foi. Cette sélection ne s'applique que s'il n'a rien déclaré de son côté."
-            : "Aucun régime déclaré laisse le carnet ouvert aux trois régimes."}
+          {!shooter.shooter_id
+            ? "Aucun régime déclaré laisse le carnet ouvert aux trois régimes."
+            : sources === null
+              ? "Lecture de la déclaration du tireur…"
+              : sources.profile
+                ? `Ce tireur déclare sur son profil : ${sources.profile
+                    .map((r) => REGIME_LABELS[r])
+                    .join(" · ")}. Ce sont ces régimes qui s'appliquent — votre sélection ci-dessus reste sans effet tant qu'il déclare quelque chose.`
+                : "Ce tireur a un compte mais n'a rien déclaré sur son profil : c'est donc votre sélection ci-dessus qui s'applique."}
         </span>
 
         {saveError && (

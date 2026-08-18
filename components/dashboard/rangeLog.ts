@@ -202,6 +202,78 @@ export async function fetchRangeLogCompliance(
   return Array.from(byRegime.values());
 }
 
+/* ─────────────────────── Régimes déclarés (précédence) ────────────────── */
+
+/** Ne garde que les valeurs connues, et null si rien ne reste. */
+function toRegimes(raw: unknown): Regime[] | null {
+  if (!Array.isArray(raw)) return null;
+  const kept = REGIME_OPTIONS.filter((r) => raw.includes(r));
+  return kept.length ? kept : null;
+}
+
+/** Détail des régimes déclarés et de la source retenue. */
+export type RegimeSources = {
+  /** Ce que le tireur lié déclare sur son profil. null s'il n'a pas de compte. */
+  profile: Regime[] | null;
+  /** Ce que l'instructeur a déclaré sur la ligne de râtelier. */
+  roster: Regime[] | null;
+  /** Régimes qui s'appliquent réellement, précédence résolue. */
+  effective: Regime[] | null;
+  /** D'où vient `effective`. null quand rien n'est déclaré nulle part. */
+  source: "profile" | "roster" | null;
+};
+
+/**
+ * Résout les régimes déclarés d'un tireur, avec le DÉTAIL des sources.
+ *
+ * Précédence — strictement celle du trigger range_log_enforce_declared_regime :
+ * le profil du tireur lié d'abord, la ligne de râtelier en repli dès que le
+ * profil ne déclare rien. Rien nulle part = null (le carnet reste ouvert aux
+ * trois régimes, la base laisse passer).
+ *
+ * Une seule requête, et seulement si le tireur a un compte : le repli râtelier
+ * est déjà porté par la ligne Shooter que l'appelant détient.
+ */
+export async function fetchRegimeSources(
+  shooter: Shooter
+): Promise<RegimeSources> {
+  const roster = toRegimes(shooter.carnet_regimes);
+
+  let profile: Regime[] | null = null;
+  if (shooter.shooter_id) {
+    try {
+      const { data } = await getSupabase()
+        .from("profiles")
+        .select("carnet_regimes")
+        .eq("id", shooter.shooter_id)
+        .maybeSingle();
+      profile = toRegimes((data as { carnet_regimes?: unknown } | null)?.carnet_regimes);
+    } catch {
+      /* lecture best-effort : on retombe sur le repli râtelier */
+    }
+  }
+
+  const effective = profile ?? roster;
+  return {
+    profile,
+    roster,
+    effective,
+    source: profile ? "profile" : roster ? "roster" : null,
+  };
+}
+
+/**
+ * Régimes qui s'appliquent à ce tireur, ou null si aucun n'est déclaré.
+ *
+ * Point de vérité unique de la précédence côté client : formulaire de saisie
+ * et carnet doivent tous deux passer par ici, jamais réimplémenter la règle.
+ */
+export async function fetchDeclaredRegimes(
+  shooter: Shooter
+): Promise<Regime[] | null> {
+  return (await fetchRegimeSources(shooter)).effective;
+}
+
 /* ──────────────────────────── Insert / RPC ───────────────────────────── */
 
 /** Saisie manuelle instructeur. created_by = user courant ; double clé si le

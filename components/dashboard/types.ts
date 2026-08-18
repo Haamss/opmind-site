@@ -26,6 +26,15 @@ export interface Shooter {
   linked_at: string;
   invite_code: string | null;
   invite_status: "pending" | "accepted" | null;
+  /**
+   * Régimes de carnet déclarés par l'instructeur pour ce tireur.
+   *
+   * Optionnel car toutes les requêtes ne sélectionnent pas la colonne :
+   * `undefined` (non demandé) et `null` (non déclaré) se traitent à
+   * l'identique — aucun régime déclaré. Pour un tireur AVEC compte lié,
+   * profiles.carnet_regimes fait foi ; cette colonne n'est qu'un repli.
+   */
+  carnet_regimes?: string[] | null;
 }
 
 export interface ManualSession {

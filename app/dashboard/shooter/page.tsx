@@ -16,6 +16,11 @@ import {
   type SessionFeedbackRow,
 } from "@/components/dashboard/data";
 import { moduleLabel } from "@/components/dashboard/modules";
+import {
+  REGIME_LABELS,
+  REGIME_OPTIONS,
+  type Regime,
+} from "@/components/dashboard/rangeLog";
 import styles from "@/components/dashboard/dashboard.module.css";
 import { NewAssignmentModal } from "@/components/dashboard/NewAssignmentModal";
 import {
@@ -134,7 +139,7 @@ function ShooterDetail() {
         sb
           .from("instructor_shooters")
           .select(
-            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at"
+            "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,carnet_regimes"
           )
           .eq("id", id)
           .maybeSingle(),
@@ -481,6 +486,8 @@ function ShooterDetail() {
               )}
             </div>
           </div>
+
+          <RegimeEditor shooter={shooter} onSaved={load} />
 
           {/* KPI GRID */}
           <div className={styles["kpi-grid"]}>
@@ -1127,6 +1134,171 @@ function ShooterDetail() {
         </>
       )}
     </div>
+  );
+}
+
+/* ──────────────  Régimes de carnet  ────────────── */
+
+/**
+ * Déclaration des régimes de carnet pour ce tireur.
+ *
+ * Écrit instructor_shooters.carnet_regimes. Facultatif : aucun régime déclaré
+ * laisse le carnet ouvert aux trois, comme avant. Sert surtout aux tireurs
+ * SANS compte, qui n'ont aucun profil où déclarer.
+ *
+ * Pour un tireur AVEC compte lié, profiles.carnet_regimes fait foi et cette
+ * valeur n'est qu'un repli : l'encart le dit, plutôt que de laisser croire à
+ * une maîtrise qu'on n'a pas.
+ */
+function RegimeEditor({
+  shooter,
+  onSaved,
+}: {
+  shooter: Shooter;
+  onSaved: () => void | Promise<void>;
+}) {
+  const declared = shooter.carnet_regimes ?? [];
+  const [selected, setSelected] = useState<string[]>(declared);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const dirty =
+    selected.length !== declared.length ||
+    selected.some((r) => !declared.includes(r));
+
+  function toggle(r: Regime) {
+    setSaved(false);
+    setSelected((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+  }
+
+  async function onSave() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaved(false);
+    try {
+      // Sélection vide = non déclaré : on écrit NULL, jamais un tableau vide
+      // (la contrainte en base exige 1 à 3 valeurs, sinon NULL).
+      const value = selected.length
+        ? REGIME_OPTIONS.filter((r) => selected.includes(r))
+        : null;
+      const { error } = await getSupabase()
+        .from("instructor_shooters")
+        .update({ carnet_regimes: value })
+        .eq("id", shooter.id);
+      if (error) {
+        setSaveError(error.message);
+        return;
+      }
+      setSaved(true);
+      await onSaved();
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? e.message : "Échec de l'enregistrement."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className={styles.panel} style={{ marginBottom: 32 }}>
+      <div className={styles["panel-head"]}>
+        <span className={styles.title}>Régimes de carnet</span>
+        <span>
+          {declared.length ? `${declared.length} déclaré(s)` : "Non déclaré"}
+        </span>
+      </div>
+      <div
+        style={{
+          padding: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {REGIME_OPTIONS.map((r) => {
+            const on = selected.includes(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => toggle(r)}
+                aria-pressed={on}
+                className={styles["btn-mini"]}
+                style={
+                  on
+                    ? { borderColor: "var(--red)", color: "var(--red)" }
+                    : undefined
+                }
+              >
+                {REGIME_LABELS[r]}
+              </button>
+            );
+          })}
+        </div>
+
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            lineHeight: 1.6,
+            color: "var(--dim-2)",
+          }}
+        >
+          {shooter.shooter_id
+            ? "Ce tireur a un compte : les régimes déclarés sur son profil font foi. Cette sélection ne s'applique que s'il n'a rien déclaré de son côté."
+            : "Aucun régime déclaré laisse le carnet ouvert aux trois régimes."}
+        </span>
+
+        {saveError && (
+          <span
+            role="alert"
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              lineHeight: 1.6,
+              color: "var(--red)",
+            }}
+          >
+            {saveError}
+          </span>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || !dirty}
+            className={styles["btn-mini"]}
+            style={{
+              borderColor: dirty ? "var(--red)" : undefined,
+              color: dirty ? "var(--red)" : undefined,
+              opacity: saving || !dirty ? 0.5 : 1,
+            }}
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+          {saved && !dirty && (
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "var(--green)",
+              }}
+            >
+              Enregistré
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

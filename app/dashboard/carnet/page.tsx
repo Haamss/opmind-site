@@ -19,6 +19,7 @@ import {
 } from "@/lib/complianceThresholds";
 import type { Shooter } from "@/components/dashboard/types";
 import {
+  fetchDeclaredRegimes,
   fetchRangeLogEntries,
   fetchRangeLogCompliance,
   validateRangeLogEntry,
@@ -87,6 +88,9 @@ function CarnetDetail() {
   const [shooter, setShooter] = useState<Shooter | null>(null);
   const [entries, setEntries] = useState<RangeLogEntry[]>([]);
   const [compliance, setCompliance] = useState<RegimeCompliance[]>([]);
+  // Régimes déclarés, précédence résolue par rangeLog. null = rien de déclaré
+  // → on garde les trois cartes, comme avant.
+  const [declaredRegimes, setDeclaredRegimes] = useState<Regime[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,7 +110,7 @@ function CarnetDetail() {
       const { data: row, error: sErr } = await sb
         .from("instructor_shooters")
         .select(
-          "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status"
+          "id,instructor_id,shooter_id,name,unit,grade,specialite,instructor_notes,status,linked_at,invite_code,invite_status,carnet_regimes"
         )
         .eq("id", id)
         .maybeSingle();
@@ -119,13 +123,15 @@ function CarnetDetail() {
         return;
       }
       const s = row as Shooter;
-      const [ent, comp] = await Promise.all([
+      const [ent, comp, declared] = await Promise.all([
         fetchRangeLogEntries(s),
         fetchRangeLogCompliance(s),
+        fetchDeclaredRegimes(s),
       ]);
       setShooter(s);
       setEntries(ent);
       setCompliance(comp);
+      setDeclaredRegimes(declared);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");
     } finally {
@@ -231,6 +237,7 @@ function CarnetDetail() {
             compliance={compliance}
             entries={entries}
             shooter={shooter}
+            declaredRegimes={declaredRegimes}
           />
 
           {/* SÉANCES */}
@@ -322,12 +329,16 @@ function ComplianceStrip({
   compliance,
   entries,
   shooter,
+  declaredRegimes,
 }: {
   compliance: RegimeCompliance[];
   entries: RangeLogEntry[];
   shooter: Shooter;
+  declaredRegimes: Regime[] | null;
 }) {
-  const regimes = Object.keys(REGIME_LABELS) as Regime[];
+  // Régimes déclarés uniquement. null = rien de déclaré → les trois, comme
+  // avant : on ne masque jamais un carnet faute de déclaration.
+  const regimes = declaredRegimes ?? (Object.keys(REGIME_LABELS) as Regime[]);
   // Séances 'tir_controle' validées sur 12 mois glissants (seuil club) : la vue
   // agrégée ne distingue pas le type, on le dérive des entrées chargées (D3).
   const cutoff = Date.now() - 365 * 86400000;
@@ -345,7 +356,12 @@ function ComplianceStrip({
     }
   }
   return (
-    <div className={styles["kpi-grid"]} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+    <div
+      className={styles["kpi-grid"]}
+      // Suit le nombre de régimes affichés : un tireur mono-régime n'a pas
+      // deux colonnes vides.
+      style={{ gridTemplateColumns: `repeat(${regimes.length}, 1fr)` }}
+    >
       {regimes.map((r) => {
         const c = compliance.find((x) => x.regime === r);
         const validatedCount = entries.filter(

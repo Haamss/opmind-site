@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 /**
  * Erreurs métier levées en base (triggers / RPC SECURITY DEFINER) et le CTA
  * de montée en gamme associé.
@@ -89,15 +91,23 @@ export function UpgradeCta({ label }: { label: string }) {
 }
 
 /**
- * Rendu d'un blocage de formule : message et hint tels que la base les
- * renvoie, puis le CTA. Renvoie null si l'erreur n'est pas OM001/OM002 —
- * l'appelant garde alors son affichage d'erreur habituel.
+ * Rendu neutre d'une erreur métier : message et hint tels que la base les
+ * renvoie, puis ce que l'appelant veut y ajouter (`children`).
+ *
+ * Ne suppose RIEN sur la nature de l'erreur : c'est à l'appelant de décider
+ * si un CTA a du sens. Un plafond de formule en mérite un ; une erreur de
+ * saisie comme OM006 (régime non déclaré) n'en mérite aucun.
  */
-export function PlanBlockedNotice({ error }: { error: unknown }) {
-  const code = supabaseErrorCode(error);
-  if (code !== "OM001" && code !== "OM002") return null;
+export function DbErrorNotice({
+  error,
+  children,
+}: {
+  error: unknown;
+  children?: ReactNode;
+}) {
   const message = supabaseErrorMessage(error);
   const hint = supabaseErrorHint(error);
+  if (!message && !hint && !children) return null;
   return (
     <div
       role="alert"
@@ -105,7 +115,7 @@ export function PlanBlockedNotice({ error }: { error: unknown }) {
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        border: "1px solid var(--red)",
+        border: "1px solid var(--red, #E84040)",
         background: "rgba(232,64,64,0.08)",
         padding: "12px 14px",
       }}
@@ -113,10 +123,10 @@ export function PlanBlockedNotice({ error }: { error: unknown }) {
       {message && (
         <span
           style={{
-            fontFamily: "var(--mono)",
+            fontFamily: 'var(--mono, "JetBrains Mono", monospace)',
             fontSize: 11,
             lineHeight: 1.6,
-            color: "var(--red)",
+            color: "var(--red, #E84040)",
           }}
         >
           {message}
@@ -125,16 +135,31 @@ export function PlanBlockedNotice({ error }: { error: unknown }) {
       {hint && (
         <span
           style={{
-            fontFamily: "var(--mono)",
+            fontFamily: 'var(--mono, "JetBrains Mono", monospace)',
             fontSize: 11,
             lineHeight: 1.6,
-            color: "var(--dim)",
+            color: "var(--dim, rgba(235,229,210,0.65))",
           }}
         >
           {hint}
         </span>
       )}
-      <UpgradeCta label="Passer au palier supérieur" />
+      {children}
     </div>
+  );
+}
+
+/**
+ * Cas particulier : blocage de formule (OM001, OM002). Rendu neutre + CTA.
+ * Renvoie null pour tout autre code — l'appelant garde alors son affichage
+ * d'erreur habituel.
+ */
+export function PlanBlockedNotice({ error }: { error: unknown }) {
+  const code = supabaseErrorCode(error);
+  if (code !== "OM001" && code !== "OM002") return null;
+  return (
+    <DbErrorNotice error={error}>
+      <UpgradeCta label="Passer au palier supérieur" />
+    </DbErrorNotice>
   );
 }

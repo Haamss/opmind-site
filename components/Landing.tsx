@@ -200,7 +200,9 @@ function Hero() {
             </CtaPrimary>
           </Magnetic>
           <Magnetic>
-            <CtaGhost href="/run-the-stage.html">Voir la démo →</CtaGhost>
+            <CtaGhost href="/stage-creator.html">
+              Voir le créateur de stages →
+            </CtaGhost>
           </Magnetic>
         </div>
       </div>
@@ -826,7 +828,7 @@ function Footer() {
       }}
     >
       <span>© OpMind · 2026</span>
-      <span>FS-001 / Beta · Approved</span>
+      <span>Bêta privée</span>
       <div style={{ display: "flex", gap: 20 }}>
         <Link href="/cgu" style={{ color: DIM, textDecoration: "none" }}>
           CGU

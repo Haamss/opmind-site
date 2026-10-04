@@ -1,5 +1,16 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import {
+  ConstatCycle,
+  HeroLines,
+  Iris,
+  LedgerRow,
+  Magnetic,
+  MotionRoot,
+  PourQuiPicker,
+  ShotTimer,
+  StageDraw,
+} from "./landing/Motion";
 
 /* ──────────────  Tokens  ────────────── */
 
@@ -32,9 +43,11 @@ export default function Landing() {
         fontFamily: FONT_BODY,
         minHeight: "100vh",
         width: "100%",
-        overflowX: "hidden",
+        // "clip" et non "hidden" : "hidden" casserait les sections épinglées (position: sticky)
+        overflowX: "clip",
       }}
     >
+      <MotionRoot />
       <TopBar />
       <Hero />
       <Problem />
@@ -76,19 +89,23 @@ function TopBar() {
       >
         <OpMindLogo />
       </Link>
-      <Link
-        href="/login"
-        style={{
-          fontFamily: FONT_MONO,
-          fontSize: 11,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          color: DIM_STRONG,
-          textDecoration: "none",
-        }}
-      >
-        Se connecter →
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <ShotTimer />
+        <Link
+          href="/login"
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: DIM_STRONG,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Se connecter →
+        </Link>
+      </div>
     </header>
   );
 }
@@ -135,7 +152,7 @@ function Hero() {
         <h1
           style={{
             fontFamily: FONT_DISPLAY,
-            fontSize: "clamp(64px, 10vw, 140px)",
+            fontSize: "clamp(44px, 6.4vw, 96px)",
             fontWeight: 700,
             lineHeight: 0.92,
             letterSpacing: "-0.03em",
@@ -144,9 +161,14 @@ function Hero() {
             margin: "32px 0 0 0",
           }}
         >
-          L&apos;outil que vos
-          <br />
-          <span style={{ color: ACCENT }}>tireurs attendent.</span>
+          <HeroLines
+            lines={[
+              "Chaque séance enregistrée.",
+              <span key="v" style={{ color: ACCENT }}>
+                Chaque séance validée.
+              </span>,
+            ]}
+          />
         </h1>
 
         <p
@@ -160,9 +182,8 @@ function Hero() {
             color: DIM_STRONG,
           }}
         >
-          Structurez vos séances, mesurez la progression de chaque tireur,
-          concevez vos stages. OpMind donne à vos élèves les outils qu&apos;ils
-          n&apos;ont pas encore.
+          Le carnet de tir de vos tireurs, tenu séance par séance et validé par
+          vous. Export PDF au format du livret PIA-207 ou du suivi FDO.
         </p>
 
         <div
@@ -173,10 +194,14 @@ function Hero() {
             flexWrap: "wrap",
           }}
         >
-          <CtaPrimary href="/register">
-            Demander un accès instructeur
-          </CtaPrimary>
-          <CtaGhost href="/run-the-stage.html">Voir la démo →</CtaGhost>
+          <Magnetic>
+            <CtaPrimary href="/register">
+              Demander un accès instructeur
+            </CtaPrimary>
+          </Magnetic>
+          <Magnetic>
+            <CtaGhost href="/run-the-stage.html">Voir la démo →</CtaGhost>
+          </Magnetic>
         </div>
       </div>
     </section>
@@ -188,29 +213,41 @@ function Hero() {
 function Problem() {
   const items = [
     {
-      title: "Pas de mesure",
+      title: "Pas de trace",
+      word: "Trace.",
       body:
-        "Un tireur qui progresse vite ne sait pas pourquoi. Un tireur qui stagne non plus.",
+        "Une séance non notée n'existe pas. Le jour où on vous la demande, il faut la reconstituer.",
     },
     {
-      title: "Pas de méthode",
+      title: "Pas de validation",
+      word: "Validation.",
       body:
-        "Les séances libres ne construisent pas. Elles entretiennent les mauvaises habitudes.",
+        "Une ligne sans visa de l'instructeur reste une simple déclaration. Et le visa arrive rarement le jour même.",
     },
     {
-      title: "Pas de traçabilité",
+      title: "Pas d'historique",
+      word: "Historique.",
       body:
-        "Sans historique, impossible de voir la progression sur 3 mois. Ni de l'expliquer.",
+        "Sans registre consultable, impossible de montrer ce qui a été fait sur 12 mois. Ni par qui.",
     },
   ];
 
-  return (
-    <SectionWrap bg="#0d0d12" tag="01 — Le constat">
-      <SectionTitle>
-        Ce que l&apos;entraînement instinctif
-        <br />
-        <span style={{ color: ACCENT }}>ne résout pas.</span>
-      </SectionTitle>
+  const header = (
+    <>
+      <SectionTag>01 — Le constat</SectionTag>
+      <div style={{ marginTop: 24 }}>
+        <SectionTitle>
+          Ce que le carnet papier
+          <br />
+          <span style={{ color: ACCENT }}>ne règle pas.</span>
+        </SectionTitle>
+      </div>
+    </>
+  );
+
+  const fallback = (
+    <div style={{ padding: "120px 0" }}>
+      {header}
       <div
         style={{
           marginTop: 64,
@@ -223,7 +260,26 @@ function Problem() {
           <ProblemCard key={it.title} title={it.title} body={it.body} />
         ))}
       </div>
-    </SectionWrap>
+    </div>
+  );
+
+  return (
+    <section
+      id="constat"
+      style={{
+        background: "#0d0d12",
+        padding: "0 48px",
+        borderTop: `1px solid ${LINE}`,
+      }}
+    >
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <ConstatCycle
+          items={items.map((it) => ({ word: it.word, body: it.body }))}
+          header={header}
+          fallback={fallback}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -284,49 +340,56 @@ function Solution() {
   const features = [
     {
       label: "01",
-      title: "Séances structurées",
+      title: "Carnet par régime",
       body:
-        "15 séances Basique progressives. Échauffement, tir, restitution. Chaque bloc est défini.",
+        "PIA-207, FDO ou registre de club : chaque tireur tient le carnet de son régime.",
     },
     {
       label: "02",
-      title: "Suivi par tireur",
+      title: "Validation instructeur",
       body:
-        "Chaque élève a son historique. Vous voyez qui progresse, qui stagne, et sur quoi.",
+        "Le tireur déclare sa séance. Vous la validez, avec signature et horodatage.",
     },
     {
       label: "03",
-      title: "Créateur de stages",
+      title: "Suivi par tireur",
       body:
-        "Concevez vos stages en 3D, exportez en PDF, importez directement dans l'app.",
+        "Chaque élève a son historique. Vous voyez qui s'entraîne, quand, et sur quoi.",
     },
     {
       label: "04",
-      title: "Données réelles",
+      title: "Export",
       body:
-        "Hit factor, accuracy, splits, par time. Pas des impressions — des chiffres.",
+        "Un PDF au format du livret, prêt à présenter. OpMind enregistre, il ne juge pas.",
     },
   ];
 
   return (
-    <SectionWrap bg={BG} tag="02 — La méthode">
+    <SectionWrap id="methode" bg={BG} tag="02 — La méthode">
       <SectionTitle>
-        OpMind structure
+        OpMind tient le registre.
         <br />
-        <span style={{ color: ACCENT }}>ce que vous enseignez.</span>
+        <span style={{ color: ACCENT }}>Vous validez.</span>
       </SectionTitle>
       <div
         style={{
           marginTop: 64,
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
           gap: 24,
         }}
       >
-        {features.map((f) => (
-          <FeatureCard key={f.label} {...f} />
+        {features.map((f, i) => (
+          <div
+            key={f.label}
+            data-reveal
+            style={{ "--reveal-delay": `${i * 90}ms` } as CSSProperties}
+          >
+            <FeatureCard {...f} />
+          </div>
         ))}
       </div>
+      <LedgerRow />
     </SectionWrap>
   );
 }
@@ -349,6 +412,7 @@ function FeatureCard({
         display: "flex",
         flexDirection: "column",
         gap: 16,
+        height: "100%",
       }}
     >
       <span
@@ -396,29 +460,38 @@ function FeatureCard({
 function PourQui() {
   const profiles = [
     {
-      title: "Instructeur club",
+      title: "Instructeur militaire / FDO",
       body:
-        "Tu formes des tireurs IPSC ou sportifs. Tu veux voir leur progression entre les séances.",
+        "Vous suivez des personnels soumis à un régime de tir. Il vous faut une trace validée et exportable.",
     },
     {
-      title: "Instructeur militaire / LE",
+      title: "Instructeur de club",
       body:
-        "Tu gères des groupes. Tu as besoin de traçabilité et de méthode reproductible.",
+        "Vous encadrez des tireurs licenciés. Vous voulez un registre propre, sans papier.",
     },
     {
       title: "Responsable de club",
       body:
-        "Tu supervises plusieurs instructeurs. Tu veux une vue d'ensemble sur ton club.",
+        "Vous supervisez plusieurs instructeurs. Vous voulez une vue d'ensemble du club.",
     },
   ];
 
-  return (
-    <SectionWrap bg="#0d0d12" tag="03 — Pour qui">
-      <SectionTitle>
-        Conçu pour les
-        <br />
-        <span style={{ color: ACCENT }}>professionnels du tir.</span>
-      </SectionTitle>
+  const header = (
+    <>
+      <SectionTag>03 — Pour qui</SectionTag>
+      <div style={{ marginTop: 24 }}>
+        <SectionTitle>
+          Conçu pour les
+          <br />
+          <span style={{ color: ACCENT }}>professionnels du tir.</span>
+        </SectionTitle>
+      </div>
+    </>
+  );
+
+  const fallback = (
+    <div style={{ padding: "120px 0" }}>
+      {header}
       <div
         style={{
           marginTop: 64,
@@ -438,7 +511,22 @@ function PourQui() {
           />
         ))}
       </div>
-    </SectionWrap>
+    </div>
+  );
+
+  return (
+    <section
+      id="pour-qui"
+      style={{
+        background: "#0d0d12",
+        padding: "0 48px",
+        borderTop: `1px solid ${LINE}`,
+      }}
+    >
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <PourQuiPicker profiles={profiles} header={header} fallback={fallback} />
+      </div>
+    </section>
   );
 }
 
@@ -511,6 +599,7 @@ function CreatorPromo() {
 
   return (
     <section
+      id="createur"
       style={{
         background: BG,
         padding: "120px 48px",
@@ -549,6 +638,8 @@ function CreatorPromo() {
         >
           Outil web 3D intégré · compatible IPSC · export PDF direct
         </p>
+
+        <StageDraw />
 
         <div
           style={{
@@ -635,6 +726,7 @@ function CreatorPromo() {
 function FinalCTA() {
   return (
     <section
+      id="acces"
       style={{
         position: "relative",
         minHeight: "100vh",
@@ -660,9 +752,11 @@ function FinalCTA() {
             "radial-gradient(ellipse at 50% 50%, black 20%, transparent 70%)",
         }}
       />
+      <Iris />
       <div style={{ position: "relative", maxWidth: 1100 }}>
         <SectionTag>05 — Bêta privée</SectionTag>
         <h2
+          data-reveal
           style={{
             marginTop: 32,
             fontFamily: FONT_DISPLAY,
@@ -674,9 +768,9 @@ function FinalCTA() {
             color: INK,
           }}
         >
-          Prêt à structurer
+          Prêt à tenir le carnet
           <br />
-          <span style={{ color: ACCENT }}>votre programme ?</span>
+          <span style={{ color: ACCENT }}>de vos tireurs ?</span>
         </h2>
 
         <div
@@ -686,9 +780,11 @@ function FinalCTA() {
             justifyContent: "center",
           }}
         >
-          <CtaPrimary href="/register" large>
-            Demander un accès instructeur →
-          </CtaPrimary>
+          <Magnetic>
+            <CtaPrimary href="/register" large>
+              Demander un accès instructeur →
+            </CtaPrimary>
+          </Magnetic>
         </div>
 
         <p
@@ -755,16 +851,19 @@ function Footer() {
 /* ──────────────  Shared blocks  ────────────── */
 
 function SectionWrap({
+  id,
   bg,
   tag,
   children,
 }: {
+  id?: string;
   bg: string;
   tag?: string;
   children: ReactNode;
 }) {
   return (
     <section
+      id={id}
       style={{
         background: bg,
         padding: "120px 48px",

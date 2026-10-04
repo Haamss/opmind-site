@@ -1,0 +1,475 @@
+/* Motion design de la landing.
+   Regle : tout est lisible sans JavaScript et sans animation.
+   Les etats caches n'existent que sous html[data-motion="on"], pose par MotionRoot. */
+
+.mono {
+  font-family: var(--font-jetbrains), "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.display {
+  font-family: var(--font-antonio), Antonio, "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+/* ---------- Reveal generique ---------- */
+
+:global(html[data-motion="on"]) [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+:global(html[data-motion="on"]) [data-reveal][data-in] {
+  opacity: 1;
+  transform: none;
+}
+
+:global(html[data-motion="on"]) [data-reveal="rule"] {
+  opacity: 1;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+:global(html[data-motion="on"]) [data-reveal="rule"][data-in] {
+  transform: scaleX(1);
+}
+
+/* ---------- Titre d'ouverture : lignes qui montent ---------- */
+
+.heroLine {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.04em;
+}
+
+.heroLine > span {
+  display: block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .heroLine > span {
+    animation: lineUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--line-delay, 0ms);
+  }
+}
+
+@keyframes lineUp {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ---------- Chrono de l'en-tete ---------- */
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+}
+
+.timerState {
+  color: rgba(235, 229, 210, 0.45);
+  transition: color 0.3s;
+}
+
+.chip {
+  position: relative;
+  overflow: hidden;
+  min-width: 96px;
+  padding: 6px 10px;
+  border: 1px solid rgba(235, 229, 210, 0.2);
+  color: #ebe5d2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  transition:
+    border-color 0.3s,
+    color 0.3s;
+}
+
+.chip > i {
+  position: absolute;
+  inset: 0;
+  background: #7a0000;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chip > span {
+  position: relative;
+}
+
+.live .timerState {
+  color: #b33a3a;
+}
+
+.live .chip {
+  border-color: #7a0000;
+  color: #fff;
+}
+
+.live .chip > i {
+  transform: scaleX(1);
+}
+
+@media (max-width: 640px) {
+  .timerState {
+    display: none;
+  }
+}
+
+/* ---------- 01 Constat : section epinglee ---------- */
+
+.pinTrack {
+  position: relative;
+}
+
+.pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.slotLabel {
+  margin-top: 56px;
+  font-size: 12px;
+  color: #b33a3a;
+}
+
+.slot {
+  position: relative;
+  height: clamp(64px, 13vw, 176px);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.slotWord {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: clamp(58px, 13vw, 176px);
+  white-space: nowrap;
+  color: #ebe5d2;
+  transform: translateY(120%);
+  transition:
+    transform 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+    color 0.4s;
+}
+
+.slotWord[data-state="in"] {
+  transform: none;
+}
+
+.slotWord[data-state="out"] {
+  transform: translateY(-120%);
+}
+
+.slotWord[data-struck="true"] {
+  color: rgba(235, 229, 210, 0.35);
+}
+
+.strike {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: clamp(8px, 1.1vw, 14px);
+  background: #7a0000;
+  width: 0;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.descs {
+  position: relative;
+  min-height: 5.2em;
+  margin-top: 28px;
+  max-width: 46ch;
+  font-size: 17px;
+  line-height: 1.55;
+  color: rgba(235, 229, 210, 0.65);
+}
+
+.descs p {
+  position: absolute;
+  inset: 0 auto auto 0;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.4s,
+    transform 0.4s;
+}
+
+.descs p[data-active="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.ticks {
+  display: flex;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.ticks span {
+  position: relative;
+  width: 46px;
+  height: 3px;
+  background: rgba(235, 229, 210, 0.1);
+  overflow: hidden;
+}
+
+.ticks i {
+  position: absolute;
+  inset: 0;
+  background: #7a0000;
+  transform-origin: left center;
+}
+
+/* ---------- 02 Ligne de carnet ---------- */
+
+.ledger {
+  margin-top: 64px;
+  border: 1px solid rgba(235, 229, 210, 0.08);
+  background: #131318;
+}
+
+.ledgerHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(235, 229, 210, 0.08);
+  font-size: 10px;
+  color: rgba(235, 229, 210, 0.45);
+}
+
+.ledgerRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.3fr);
+  gap: 16px;
+  align-items: center;
+  padding: 24px;
+}
+
+@media (max-width: 860px) {
+  .ledgerRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cellK {
+  font-size: 9px;
+  color: rgba(235, 229, 210, 0.45);
+}
+
+.cellV {
+  margin-top: 6px;
+  font-family: var(--font-barlow), system-ui, sans-serif;
+  font-size: 16px;
+  color: #ebe5d2;
+}
+
+.status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(235, 229, 210, 0.2);
+  font-size: 11px;
+  color: rgba(235, 229, 210, 0.65);
+  transition:
+    border-color 0.4s,
+    color 0.4s,
+    background 0.4s;
+}
+
+.status[data-validated="true"] {
+  border-color: #7a0000;
+  background: #7a0000;
+  color: #fff;
+}
+
+.visa {
+  padding: 14px 24px 20px;
+  border-top: 1px solid rgba(235, 229, 210, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  font-size: 10px;
+  color: rgba(235, 229, 210, 0.45);
+}
+
+.visaLine {
+  flex: 1 1 160px;
+  height: 1px;
+  background: #7a0000;
+  transform-origin: left center;
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.visaLine[data-drawn="false"] {
+  transform: scaleX(0);
+}
+
+.visaText {
+  color: #ebe5d2;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.4s;
+}
+
+.visaText[data-shown="false"] {
+  opacity: 0;
+}
+
+.note {
+  margin-top: 16px;
+  font-size: 10px;
+  color: rgba(235, 229, 210, 0.45);
+}
+
+/* ---------- 03 Pour qui : roue ---------- */
+
+.picker {
+  position: relative;
+  height: clamp(300px, 46vh, 420px);
+  margin-top: 48px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent);
+}
+
+.band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #7a0000;
+  z-index: 2;
+}
+
+.wheel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 40px);
+}
+
+.itemTitle {
+  font-size: clamp(36px, 7vw, 96px);
+  white-space: nowrap;
+  color: #ebe5d2;
+}
+
+.itemBody {
+  max-width: 36ch;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(235, 229, 210, 0.65);
+}
+
+@media (max-width: 760px) {
+  .itemBody {
+    display: none;
+  }
+  .itemTitle {
+    white-space: normal;
+    line-height: 1;
+  }
+}
+
+/* ---------- 04 Plan de stage ---------- */
+
+.stage {
+  max-width: 720px;
+  margin: 56px auto 0;
+  padding: 14px;
+  border: 1px solid rgba(235, 229, 210, 0.08);
+  background: #131318;
+  text-align: left;
+}
+
+.stageHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 9px;
+  color: rgba(235, 229, 210, 0.45);
+}
+
+.stage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ---------- 05 Acces : iris ---------- */
+
+.iris {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #9a0000;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.irisGo {
+  animation: irisOpen 1.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes irisOpen {
+  0% {
+    width: 12px;
+    height: 12px;
+    opacity: 1;
+  }
+  100% {
+    width: 220vmax;
+    height: 220vmax;
+    opacity: 0;
+  }
+}
+
+/* ---------- Bouton aimante ---------- */
+
+.magnet {
+  display: inline-flex;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}

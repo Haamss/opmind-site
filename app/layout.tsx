@@ -52,23 +52,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpMind — Structure ton tir. Analyse. Progresse.",
+  title: "OpMind — Chaque séance enregistrée. Chaque séance validée.",
   description:
-    "OpMind est l'application d'entraînement au tir pensée pour les tireurs exigeants. Séances structurées, shot timer, analyse de performances, historique complet.",
+    "OpMind est le carnet de tir des instructeurs et de leurs tireurs : séances déclarées, validées par l'instructeur avec signature et horodatage, export PDF au format PIA-207 ou FDO.",
   keywords: [
-    "tir sportif",
-    "IPSC",
-    "shot timer",
-    "entraînement tir",
-    "application tir",
-    "dry fire",
-    "progression",
+    "carnet de tir",
+    "PIA-207",
+    "FDO",
+    "instructeur de tir",
+    "registre de club",
+    "traçabilité",
+    "validation instructeur",
   ],
   metadataBase: new URL("https://opmind.fr"),
   openGraph: {
-    title: "OpMind — Entraîne-toi comme un professionnel",
+    title: "OpMind — Chaque séance enregistrée. Chaque séance validée.",
     description:
-      "Structure tes séances de tir, analyse chaque performance, progresse avec méthode.",
+      "Le carnet de tir de vos tireurs, tenu séance par séance et validé par l'instructeur. Export PDF au format du livret.",
     url: "https://opmind.fr",
     siteName: "OpMind",
     locale: "fr_FR",
